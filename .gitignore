@@ -6,3 +6,8 @@ dist/
 coverage/
 *.tsbuildinfo
 .chunkyyy-cache/
+
+# Comparison and reference documents
+COMPARISON.md
+*chunkx*
+*comparison*

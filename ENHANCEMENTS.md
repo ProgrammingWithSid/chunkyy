@@ -1,6 +1,6 @@
 # Chunkyyy Enhancements Summary
 
-This document summarizes the enhancements made to match and exceed chunkx capabilities.
+This document summarizes the enhancements made to chunkyyy.
 
 ## ✅ Completed Enhancements
 
@@ -116,19 +116,7 @@ This document summarizes the enhancements made to match and exceed chunkx capabi
 **Files:**
 - `src/parsers/typescript-adapter.ts` - Complete TypeScript feature support
 
-## 📊 Comparison with chunkx
-
-| Feature | Chunkyyy | Chunkx | Status |
-|---------|----------|--------|--------|
-| Multi-language support | ✅ (10+ languages) | ✅ (30+ languages) | ✅ Enhanced |
-| Rich metadata | ✅✅ (Complete) | ⚠️ (Basic) | ✅✅ Exceeds |
-| Dependency analysis | ✅✅ (Advanced) | ❌ | ✅✅ Exceeds |
-| Multiple interfaces | ✅✅ (CLI + API + Library) | ✅ (Library only) | ✅✅ Exceeds |
-| TypeScript features | ✅✅ (Complete) | ⚠️ (Basic) | ✅✅ Exceeds |
-| Token counting | ✅ (Heuristic) | ✅✅ (tiktoken) | ⚠️ Can improve |
-| Size units | ✅ (Tokens only) | ✅✅ (Tokens/Bytes/Lines) | ⚠️ Can improve |
-
-## 🚀 Key Differentiators
+## 🚀 Key Features
 
 1. **Rich Metadata**: Chunkyyy extracts comprehensive metadata including parameters, return types, decorators, JSDoc, type parameters, and more.
 
@@ -157,4 +145,4 @@ Chunkyyy now has:
 - ✅✅ Multiple interfaces (CLI, API, Library)
 - ✅✅ TypeScript-specific features
 
-The project now matches and exceeds chunkx capabilities in metadata extraction, dependency analysis, and interface variety, while providing a foundation for multi-language support.
+The project provides comprehensive code chunking capabilities with rich metadata extraction, dependency analysis, and multiple interfaces.
