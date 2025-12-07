@@ -169,9 +169,7 @@ const chunkyyy = new Chunkyyy({
    - `code-analysis.ts` - Code analysis example
 
 2. **Read the docs**:
-   - [Practical Guide](./docs/PRACTICAL_GUIDE.md) - Real-world examples
-   - [Usage Guide](./docs/USAGE.md) - Comprehensive API docs
-   - [Architecture](./docs/ARCHITECTURE.md) - How it works
+   - [Usage Guide](./USAGE.md) - Comprehensive API docs
 
 3. **Integrate**: Add to your project and start chunking!
 
@@ -202,8 +200,7 @@ curl -X POST http://localhost:3000/api/chunk \
 
 ## Need Help?
 
-- Check [Practical Guide](./docs/PRACTICAL_GUIDE.md) for real examples
-- See [Usage Guide](./docs/USAGE.md) for detailed API docs
+- See [Usage Guide](./USAGE.md) for detailed API docs
 - Look at [examples/](./examples/) for code samples
 
 ## Why Chunkyyy?

@@ -87,12 +87,7 @@ npm install chunkyyy
 ## Documentation
 
 - 📖 **[Getting Started](./GETTING_STARTED.md)** - Quick start guide with examples
-- 📚 **[Practical Guide](./docs/PRACTICAL_GUIDE.md)** - Real-world use cases and examples
-- 🔧 **[Usage Guide](./docs/USAGE.md)** - Comprehensive API documentation
-- 🏗️ **[Architecture](./docs/ARCHITECTURE.md)** - How it works under the hood
-- 🔍 **[TypeScript Compiler API](./docs/TS_COMPILER_API.md)** - Using TS Compiler API
-- ⚠️ **[Edge Cases](./docs/EDGE_CASES.md)** - Edge cases and handling
-- 💡 **[Design Decisions](./docs/DESIGN_DECISIONS.md)** - Why we made these choices
+- 🔧 **[Usage Guide](./USAGE.md)** - Comprehensive API documentation
 
 ## Examples
 
