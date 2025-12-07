@@ -7,7 +7,14 @@ import { BaseExtractor } from './base-extractor';
 export class MethodExtractor extends BaseExtractor {
   canHandle(node: ASTNode): boolean {
     // Methods are functions that are children of classes
-    return this.adapter.isFunction(node);
+    // Also check that it has a range (to avoid property declarations)
+    if (!this.adapter.isFunction(node)) {
+      return false;
+    }
+    
+    // Verify it has a valid range
+    const range = this.adapter.getNodeRange(node);
+    return range !== undefined;
   }
 
   getChunkType(): ChunkType {

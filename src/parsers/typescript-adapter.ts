@@ -83,25 +83,51 @@ export class TypeScriptAdapter implements ParserAdapter {
     const tsNode = node as unknown as ts.Node;
     if (!this.sourceFile) return undefined;
 
-    const start = this.sourceFile.getLineAndCharacterOfPosition(tsNode.getStart());
-    const end = this.sourceFile.getLineAndCharacterOfPosition(tsNode.getEnd());
+    try {
+      // Get start and end positions
+      const startPos = tsNode.getStart(this.sourceFile);
+      const endPos = tsNode.getEnd();
+      
+      const start = this.sourceFile.getLineAndCharacterOfPosition(startPos);
+      const end = this.sourceFile.getLineAndCharacterOfPosition(endPos);
 
-    return {
-      start: {
-        line: start.line + 1, // Convert to 1-indexed
-        column: start.character,
-      },
-      end: {
-        line: end.line + 1,
-        column: end.character,
-      },
-    };
+      return {
+        start: {
+          line: start.line + 1, // Convert to 1-indexed
+          column: start.character,
+        },
+        end: {
+          line: end.line + 1,
+          column: end.character,
+        },
+      };
+    } catch (error) {
+      // If we can't get range, return undefined
+      return undefined;
+    }
   }
 
   getChildren(node: ASTNode): ASTNode[] {
     const tsNode = node as unknown as ts.Node;
     const children: ASTNode[] = [];
 
+    // For class declarations, get members from the class body
+    if (ts.isClassDeclaration(tsNode) && tsNode.members) {
+      for (const member of tsNode.members) {
+        children.push(member as unknown as ASTNode);
+      }
+      return children;
+    }
+
+    // For interface declarations, get members
+    if (ts.isInterfaceDeclaration(tsNode) && tsNode.members) {
+      for (const member of tsNode.members) {
+        children.push(member as unknown as ASTNode);
+      }
+      return children;
+    }
+
+    // For other nodes, get all children
     ts.forEachChild(tsNode, (child: ts.Node) => {
       children.push(child as unknown as ASTNode);
     });

@@ -92,10 +92,25 @@ export abstract class BaseExtractor {
     const children = this.adapter.getChildren(node);
 
     for (const child of children) {
+      // Skip nodes without ranges (decorators, modifiers, etc.)
+      const childRange = this.adapter.getNodeRange(child);
+      if (!childRange) {
+        continue;
+      }
+
       for (const extractor of extractors) {
         if (extractor.canHandle(child)) {
-          const childChunks = extractor.extract(child, sourceCode, filePath, qualifiedName);
-          nested.push(...childChunks);
+          try {
+            const childChunks = extractor.extract(child, sourceCode, filePath, qualifiedName);
+            nested.push(...childChunks);
+          } catch (error) {
+            // Skip chunks that can't be extracted (e.g., methods without proper ranges)
+            // This can happen with complex nested structures
+            if (error instanceof Error && error.message.includes('range')) {
+              continue;
+            }
+            throw error;
+          }
         }
       }
     }
