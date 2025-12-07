@@ -16,3 +16,5 @@ GITHUB_SETUP.md
 *.pdf
 
 MakeFile
+examples/
+docs/
