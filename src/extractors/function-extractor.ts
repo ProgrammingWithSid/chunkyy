@@ -1,3 +1,4 @@
+import * as ts from 'typescript';
 import { ASTNode, Chunk, ChunkType } from '../types';
 import { BaseExtractor } from './base-extractor';
 
@@ -6,6 +7,12 @@ import { BaseExtractor } from './base-extractor';
  */
 export class FunctionExtractor extends BaseExtractor {
   canHandle(node: ASTNode): boolean {
+    // Don't handle method declarations - those are handled by MethodExtractor
+    const tsNode = node as unknown as ts.Node;
+    if (ts.isMethodDeclaration(tsNode)) {
+      return false;
+    }
+
     return (
       this.adapter.isFunction(node) &&
       // Only handle top-level functions or arrow functions assigned to variables

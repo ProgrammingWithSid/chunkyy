@@ -1,3 +1,4 @@
+import * as ts from 'typescript';
 import { ASTNode, Chunk, ChunkType } from '../types';
 import { BaseExtractor } from './base-extractor';
 
@@ -7,8 +8,11 @@ import { BaseExtractor } from './base-extractor';
 export class MethodExtractor extends BaseExtractor {
   canHandle(node: ASTNode): boolean {
     // Methods are functions that are children of classes
-    // Also check that it has a range (to avoid property declarations)
-    if (!this.adapter.isFunction(node)) {
+    // Check specifically for method declarations
+    const tsNode = node as unknown as ts.Node;
+
+    // Must be a method declaration specifically
+    if (!ts.isMethodDeclaration(tsNode)) {
       return false;
     }
 

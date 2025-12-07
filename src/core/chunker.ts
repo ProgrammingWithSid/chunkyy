@@ -51,6 +51,29 @@ export class Chunker {
   }
 
   /**
+   * Update adapters for all extractors, including nested ones
+   */
+  private updateExtractorAdapters(adapter: ParserAdapter): void {
+    this.extractors.forEach(extractor => {
+      (extractor as unknown as { adapter: ParserAdapter }).adapter = adapter;
+
+      // Update nested extractors in ClassExtractor
+      if (extractor instanceof ClassExtractor) {
+        const classExtractor = extractor as unknown as {
+          methodExtractor?: { adapter: ParserAdapter };
+          functionExtractor?: { adapter: ParserAdapter };
+        };
+        if (classExtractor.methodExtractor) {
+          classExtractor.methodExtractor.adapter = adapter;
+        }
+        if (classExtractor.functionExtractor) {
+          classExtractor.functionExtractor.adapter = adapter;
+        }
+      }
+    });
+  }
+
+  /**
    * Chunk a single file
    */
   async chunkFile(filePath: string): Promise<Chunk[]> {
@@ -66,14 +89,15 @@ export class Chunker {
     try {
       const adapter = this.getAdapter(filePath);
 
-      // Update extractors with the adapter
-      this.extractors.forEach(extractor => {
-        (extractor as unknown as { adapter: ParserAdapter }).adapter = adapter;
-      });
+      // Update extractors with the adapter (including nested extractors)
+      this.updateExtractorAdapters(adapter);
 
       const ast = adapter.parse(sourceCode, filePath);
       const root = adapter.getRoot(ast);
       const topLevelDecls = adapter.getTopLevelDeclarations(root);
+
+      // Get file-level imports (shared across all chunks)
+      const fileImports = adapter.getImports(root);
 
       const chunks: Chunk[] = [];
 
@@ -82,6 +106,16 @@ export class Chunker {
         for (const extractor of this.extractors) {
           if (extractor.canHandle(decl)) {
             const extracted = extractor.extract(decl, sourceCode, filePath);
+            // Add file-level imports to each chunk
+            extracted.forEach(chunk => {
+              // Merge file imports with chunk-specific imports
+              const existingSources = new Set(chunk.dependencies.map(d => d.source));
+              fileImports.forEach(imp => {
+                if (!existingSources.has(imp.source)) {
+                  chunk.dependencies.push(imp);
+                }
+              });
+            });
             chunks.push(...extracted);
           }
         }
@@ -109,8 +143,11 @@ export class Chunker {
     for (const chunk of chunks) {
       const size = chunk.tokenCount || estimateTokenCount(chunk.content);
 
-      if (size < this.options.minChunkSize && currentChunk) {
-        // Merge with previous chunk if both are small
+      // Don't merge method chunks - they should remain separate
+      const isMethod = chunk.type === 'method';
+
+      if (size < this.options.minChunkSize && currentChunk && !isMethod) {
+        // Merge with previous chunk if both are small (but not methods)
         const currentSize = currentChunk.tokenCount || estimateTokenCount(currentChunk.content);
         if (currentSize + size <= this.options.chunkSize) {
           // Merge chunks
