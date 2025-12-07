@@ -87,7 +87,7 @@ export class TypeScriptAdapter implements ParserAdapter {
       // Get start and end positions
       const startPos = tsNode.getStart(this.sourceFile);
       const endPos = tsNode.getEnd();
-      
+
       const start = this.sourceFile.getLineAndCharacterOfPosition(startPos);
       const end = this.sourceFile.getLineAndCharacterOfPosition(endPos);
 

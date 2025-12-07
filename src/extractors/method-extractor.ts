@@ -11,7 +11,7 @@ export class MethodExtractor extends BaseExtractor {
     if (!this.adapter.isFunction(node)) {
       return false;
     }
-    
+
     // Verify it has a valid range
     const range = this.adapter.getNodeRange(node);
     return range !== undefined;
