@@ -2,6 +2,9 @@
 
 A TypeScript/JavaScript semantic code chunking engine inspired by CAST (Chunking via Abstract Syntax Trees). Optimized for RAG pipelines and code search.
 
+> 📚 **Documentation**: See [`docs/`](./docs/) directory for detailed guides
+> 💡 **Examples**: Check [`examples/`](./examples/) directory for usage examples
+
 ## Features
 
 - 🔍 **AST-Based Chunking**: Uses TypeScript Compiler API, SWC, Babel, or Esprima
@@ -11,6 +14,7 @@ A TypeScript/JavaScript semantic code chunking engine inspired by CAST (Chunking
 - 🔄 **Incremental Updates**: Only re-chunk changed files
 - 📚 **Multiple Interfaces**: CLI, Node.js library, and REST API
 - 🔒 **Privacy First**: Processes code in-memory, never stores user code
+- 💾 **Memory Efficient**: Optional content storage for reduced memory usage
 
 ## Architecture
 
@@ -48,19 +52,15 @@ A TypeScript/JavaScript semantic code chunking engine inspired by CAST (Chunking
 
 ## Quick Start
 
-### Library Usage
+```bash
+npm install chunkyyy
+```
 
 ```typescript
 import { Chunkyyy } from 'chunkyyy';
 
-const chunkyyy = new Chunkyyy({
-  parser: 'typescript', // or 'swc', 'babel', 'esprima'
-  chunkSize: 512, // tokens
-  overlap: 50, // tokens
-});
-
-const chunks = await chunkyyy.chunkFile('src/utils.ts');
-console.log(chunks);
+const chunkyyy = new Chunkyyy();
+const chunks = await chunkyyy.chunkFile('src/index.ts');
 ```
 
 ### CLI Usage
@@ -86,8 +86,10 @@ npm install chunkyyy
 
 ## Documentation
 
-- 📖 **[Getting Started](./GETTING_STARTED.md)** - Quick start guide with examples
-- 🔧 **[Usage Guide](./USAGE.md)** - Comprehensive API documentation
+- 📖 **[Getting Started](./docs/GETTING_STARTED.md)** - Quick start guide with examples
+- 🔧 **[Usage Guide](./docs/USAGE.md)** - Comprehensive API documentation
+- 📚 **[API Reference](./docs/API.md)** - Complete API documentation
+- 🧪 **[Testing Guide](./docs/TESTING.md)** - Testing documentation
 
 ## Examples
 
@@ -95,3 +97,10 @@ See [examples/](./examples/) directory for:
 - `basic-usage.ts` - Simple usage examples
 - `rag-integration.ts` - RAG pipeline integration
 - `code-analysis.ts` - Code analysis and metrics
+- `extract-with-dependencies.ts` - Code extraction with dependencies
+- `test-complex-extraction.ts` - Complex extraction scenarios
+- `sample-codebase/` - Sample codebase for testing
+
+## License
+
+MIT
