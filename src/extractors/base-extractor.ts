@@ -6,7 +6,14 @@ import { estimateTokenCount } from '../utils/token-count';
  * Base class for chunk extractors
  */
 export abstract class BaseExtractor {
-  constructor(protected adapter: ParserAdapter) {}
+  protected includeContent: boolean = false;
+
+  constructor(adapter: ParserAdapter, includeContent: boolean = false) {
+    this.adapter = adapter;
+    this.includeContent = includeContent;
+  }
+
+  protected adapter: ParserAdapter;
 
   /**
    * Extract chunks from an AST node
@@ -40,8 +47,9 @@ export abstract class BaseExtractor {
       throw new Error('Cannot create chunk without range');
     }
 
-    const content = this.adapter.extractCode(node, sourceCode);
-    const hash = generateChunkHash(content, filePath, {
+    // Extract content only if includeContent is true (for memory efficiency)
+    const content = this.includeContent ? this.adapter.extractCode(node, sourceCode) : '';
+    const hash = generateChunkHash(content || this.adapter.extractCode(node, sourceCode), filePath, {
       startLine: range.start.line,
       endLine: range.end.line,
     });
@@ -71,8 +79,8 @@ export abstract class BaseExtractor {
       parameters: this.adapter.getParameters(node),
       returnType: this.adapter.getReturnType(node),
       jsdoc: this.adapter.getJSDoc(node),
-      tokenCount: estimateTokenCount(content),
-      content,
+      tokenCount: content ? estimateTokenCount(content) : undefined,
+      ...(this.includeContent && { content }),
     };
 
     return chunk;

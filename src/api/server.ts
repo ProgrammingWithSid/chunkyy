@@ -209,6 +209,75 @@ app.get('/api/metadata/:chunkId', async (req, res) => {
 });
 
 /**
+ * POST /api/extract
+ * Extract code chunks with dependencies for specified file ranges
+ */
+app.post('/api/extract', async (req, res) => {
+  try {
+    const { requests } = req.body;
+
+    if (!requests || !Array.isArray(requests)) {
+      return res.status(400).json({
+        error: 'Missing or invalid requests array',
+      });
+    }
+
+    // Validate request format
+    for (const request of requests) {
+      if (!request.filePath || !request.ranges || !Array.isArray(request.ranges)) {
+        return res.status(400).json({
+          error: 'Invalid request format. Each request must have filePath and ranges array',
+        });
+      }
+      for (const range of request.ranges) {
+        if (typeof range.start !== 'number' || typeof range.end !== 'number') {
+          return res.status(400).json({
+            error: 'Invalid range format. Each range must have start and end line numbers',
+          });
+        }
+      }
+    }
+
+    const chunkyyy = getChunkyyy();
+    const result = await chunkyyy.extractCodeWithDependencies(requests);
+
+    // Convert Map to object for JSON serialization
+    const codeBlocksObj: Record<string, string> = {};
+    result.codeBlocks.forEach((value, key) => {
+      codeBlocksObj[key] = value;
+    });
+
+    res.json({
+      selectedChunks: result.selectedChunks.map(chunk => ({
+        ...chunk,
+        content: undefined, // Don't send content by default
+      })),
+      dependentChunks: result.dependentChunks.map(chunk => ({
+        ...chunk,
+        content: undefined,
+      })),
+      allChunks: result.allChunks.map(chunk => ({
+        ...chunk,
+        content: undefined,
+      })),
+      codeBlocks: codeBlocksObj,
+      dependencyGraph: result.dependencyGraph,
+      stats: {
+        selectedCount: result.selectedChunks.length,
+        dependentCount: result.dependentChunks.length,
+        totalCount: result.allChunks.length,
+        filesCount: result.codeBlocks.size,
+      },
+    });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    res.status(500).json({
+      error: errorMessage,
+    });
+  }
+});
+
+/**
  * GET /api/docs
  * API documentation
  */
@@ -263,6 +332,14 @@ app.get('/api/docs', (req, res) => {
         method: 'GET',
         path: '/api/health',
         description: 'Health check',
+      },
+      {
+        method: 'POST',
+        path: '/api/extract',
+        description: 'Extract code chunks with dependencies for specified file ranges',
+        body: {
+          requests: 'FileRangeRequest[] (required) - Array of { filePath: string, ranges: [{ start: number, end: number }] }',
+        },
       },
     ],
   });

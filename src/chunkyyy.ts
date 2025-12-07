@@ -2,7 +2,7 @@ import fg from 'fast-glob';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Chunker } from './core/chunker';
-import { Chunk, ChunkingOptions, ChunkingResult } from './types';
+import { Chunk, ChunkingOptions, ChunkingResult, CodeExtractionResult, FileRangeRequest } from './types';
 
 /**
  * Main Chunkyyy class - high-level API
@@ -96,5 +96,30 @@ export class Chunkyyy {
     void _dirPath;
     void _callback;
     return () => {};
+  }
+
+  /**
+   * Extract code chunks with dependencies for specified file ranges
+   * Returns complete functions, variables, and all their dependencies
+   *
+   * @example
+   * ```typescript
+   * const result = await chunkyyy.extractCodeWithDependencies([
+   *   {
+   *     filePath: 'src/utils.ts',
+   *     ranges: [{ start: 10, end: 25 }, { start: 30, end: 45 }]
+   *   },
+   *   {
+   *     filePath: 'src/api.ts',
+   *     ranges: [{ start: 5, end: 20 }]
+   *   }
+   * ]);
+   *
+   * // Get code blocks by file
+   * result.codeBlocks.get('src/utils.ts'); // Complete code with dependencies
+   * ```
+   */
+  async extractCodeWithDependencies(requests: FileRangeRequest[]): Promise<CodeExtractionResult> {
+    return this.chunker.extractCodeWithDependencies(requests);
   }
 }

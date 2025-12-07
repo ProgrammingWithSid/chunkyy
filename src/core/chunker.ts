@@ -9,7 +9,7 @@ import {
     InterfaceExtractor,
 } from '../extractors';
 import { createParser } from '../parsers';
-import { Chunk, ChunkingOptions, ChunkingResult, ChunkType, Dependency, DependencyGraph, ExportInfo, ImportExportMap, ImportInfo, ParserAdapter } from '../types';
+import { Chunk, ChunkingOptions, ChunkingResult, ChunkType, CodeExtractionResult, Dependency, DependencyGraph, ExportInfo, FileRangeRequest, ImportExportMap, ImportInfo, ParserAdapter } from '../types';
 import { estimateTokenCount } from '../utils/token-count';
 
 /**
@@ -30,16 +30,17 @@ export class Chunker {
       rootDir: options.rootDir || process.cwd(),
       include: options.include || ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
       exclude: options.exclude || ['node_modules/**', 'dist/**', 'build/**'],
+      includeContent: options.includeContent ?? false, // Default to false for memory efficiency
     };
 
     // Extractors will get adapter per-file
     // Create a temporary adapter to initialize extractors
     const tempAdapter = createParser(this.options.parser);
     this.extractors = [
-      new ClassExtractor(tempAdapter),
-      new InterfaceExtractor(tempAdapter),
-      new EnumExtractor(tempAdapter),
-      new FunctionExtractor(tempAdapter),
+      new ClassExtractor(tempAdapter, this.options.includeContent),
+      new InterfaceExtractor(tempAdapter, this.options.includeContent),
+      new EnumExtractor(tempAdapter, this.options.includeContent),
+      new FunctionExtractor(tempAdapter, this.options.includeContent),
     ];
   }
 
@@ -141,18 +142,25 @@ export class Chunker {
     let currentChunk: Chunk | null = null;
 
     for (const chunk of chunks) {
-      const size = chunk.tokenCount || estimateTokenCount(chunk.content);
+      // Calculate size - use tokenCount if available, otherwise estimate from content or range
+      const size = chunk.tokenCount ||
+        (chunk.content ? estimateTokenCount(chunk.content) :
+         this.estimateSizeFromRange(chunk));
 
       // Don't merge method chunks - they should remain separate
       const isMethod = chunk.type === 'method';
 
       if (size < this.options.minChunkSize && currentChunk && !isMethod) {
         // Merge with previous chunk if both are small (but not methods)
-        const currentSize = currentChunk.tokenCount || estimateTokenCount(currentChunk.content);
+        const currentSize = currentChunk.tokenCount ||
+          (currentChunk.content ? estimateTokenCount(currentChunk.content) :
+           this.estimateSizeFromRange(currentChunk));
         if (currentSize + size <= this.options.chunkSize) {
           // Merge chunks
           const mergedContent = this.mergeChunkContent(currentChunk, chunk, sourceCode);
-          currentChunk.content = mergedContent;
+          if (this.options.includeContent) {
+            currentChunk.content = mergedContent;
+          }
           currentChunk.endLine = chunk.endLine;
           currentChunk.range.end = chunk.range.end;
           currentChunk.tokenCount = estimateTokenCount(mergedContent);
@@ -179,6 +187,37 @@ export class Chunker {
     }
 
     return processed;
+  }
+
+  /**
+   * Estimate token count from range (rough approximation)
+   */
+  private estimateSizeFromRange(chunk: Chunk): number {
+    // Rough estimate: ~4 tokens per line
+    const lineCount = chunk.endLine - chunk.startLine + 1;
+    return lineCount * 4;
+  }
+
+  /**
+   * Reconstruct code content for a chunk from its file and range
+   * Useful when includeContent is false to get content on-demand
+   */
+  async getChunkContent(chunk: Chunk): Promise<string> {
+    if (chunk.content !== undefined) {
+      return chunk.content;
+    }
+
+    // Reconstruct from file
+    const fullPath = path.resolve(this.options.rootDir, chunk.filePath);
+    const sourceCode = fs.readFileSync(fullPath, 'utf-8');
+    const lines = sourceCode.split('\n');
+
+    // Extract lines based on range (1-indexed)
+    const startLine = chunk.startLine - 1;
+    const endLine = chunk.endLine;
+    const content = lines.slice(startLine, endLine).join('\n');
+
+    return content;
   }
 
   /**
@@ -457,7 +496,8 @@ export class Chunker {
 
     for (const chunk of chunks) {
       chunksByType[chunk.type]++;
-      totalTokens += chunk.tokenCount || estimateTokenCount(chunk.content);
+      totalTokens += chunk.tokenCount ||
+        (chunk.content ? estimateTokenCount(chunk.content) : this.estimateSizeFromRange(chunk));
     }
 
     return {
@@ -467,5 +507,168 @@ export class Chunker {
       averageChunkSize: chunks.length > 0 ? totalTokens / chunks.length : 0,
       totalTokens,
     };
+  }
+
+  /**
+   * Extract code chunks with dependencies for specified file ranges
+   * Returns complete functions, variables, and all their dependencies
+   */
+  async extractCodeWithDependencies(requests: FileRangeRequest[]): Promise<CodeExtractionResult> {
+    // Step 1: Chunk all requested files
+    const allFileChunks: Chunk[] = [];
+    const fileChunkMap = new Map<string, Chunk[]>(); // filePath -> chunks
+
+    for (const request of requests) {
+      const chunks = await this.chunkFile(request.filePath);
+      fileChunkMap.set(request.filePath, chunks);
+      allFileChunks.push(...chunks);
+    }
+
+    // Step 2: Find chunks that overlap with specified ranges
+    const selectedChunkIds = new Set<string>();
+    const selectedChunks: Chunk[] = [];
+
+    for (const request of requests) {
+      const fileChunks = fileChunkMap.get(request.filePath) || [];
+
+      for (const range of request.ranges) {
+        // Find chunks that overlap with this range
+        for (const chunk of fileChunks) {
+          const overlaps = this.chunkOverlapsRange(chunk, range);
+          if (overlaps && !selectedChunkIds.has(chunk.id)) {
+            selectedChunkIds.add(chunk.id);
+            selectedChunks.push(chunk);
+          }
+        }
+      }
+    }
+
+    // Step 3: Build dependency graph for all chunks
+    const dependencyGraph = this.buildDependencyGraph(allFileChunks);
+
+    // Step 4: Resolve all dependencies recursively
+    const dependentChunkIds = new Set<string>();
+    const resolveDependencies = (chunkId: string, visited: Set<string>): void => {
+      if (visited.has(chunkId)) return;
+      visited.add(chunkId);
+
+      const dependencies = dependencyGraph[chunkId] || [];
+      for (const depId of dependencies) {
+        dependentChunkIds.add(depId);
+        resolveDependencies(depId, visited);
+      }
+    };
+
+    // Resolve dependencies for all selected chunks
+    for (const chunk of selectedChunks) {
+      resolveDependencies(chunk.id, new Set());
+    }
+
+    // Step 5: Get all dependent chunks
+    const dependentChunks: Chunk[] = [];
+    const allChunkMap = new Map<string, Chunk>();
+    for (const chunk of allFileChunks) {
+      allChunkMap.set(chunk.id, chunk);
+    }
+
+    // Also include chunks from other files that are dependencies
+    // We need to chunk all files that might contain dependencies
+    const dependencyFiles = new Set<string>();
+    for (const chunk of selectedChunks) {
+      for (const dep of chunk.dependencies) {
+        if (dep.source && dep.source.startsWith('.')) {
+          // Relative import - resolve file path
+          const resolvedPath = this.resolveRelativePath(dep.source, chunk.filePath);
+          dependencyFiles.add(resolvedPath);
+        }
+      }
+    }
+
+    // Chunk dependency files
+    for (const depFile of dependencyFiles) {
+      try {
+        const depChunks = await this.chunkFile(depFile);
+        for (const chunk of depChunks) {
+          allChunkMap.set(chunk.id, chunk);
+          if (dependentChunkIds.has(chunk.id)) {
+            dependentChunks.push(chunk);
+          }
+        }
+      } catch {
+        // File might not exist or can't be accessed
+        continue;
+      }
+    }
+
+    // Get dependent chunks from already chunked files
+    for (const chunkId of dependentChunkIds) {
+      const chunk = allChunkMap.get(chunkId);
+      if (chunk && !selectedChunkIds.has(chunkId)) {
+        dependentChunks.push(chunk);
+      }
+    }
+
+    // Step 6: Build complete code blocks
+    const allChunks = [...selectedChunks, ...dependentChunks];
+    const codeBlocks = new Map<string, string>();
+
+    // Group chunks by file and build code blocks
+    const chunksByFile = new Map<string, Chunk[]>();
+    for (const chunk of allChunks) {
+      if (!chunksByFile.has(chunk.filePath)) {
+        chunksByFile.set(chunk.filePath, []);
+      }
+      chunksByFile.get(chunk.filePath)!.push(chunk);
+    }
+
+    // Build code blocks for each file
+    for (const [filePath, chunks] of chunksByFile.entries()) {
+      const fullPath = path.resolve(this.options.rootDir, filePath);
+      const sourceCode = fs.readFileSync(fullPath, 'utf-8');
+      const lines = sourceCode.split('\n');
+
+      // Sort chunks by start line
+      const sortedChunks = [...chunks].sort((a, b) => a.startLine - b.startLine);
+
+      // Extract code for each chunk and combine
+      const codeParts: string[] = [];
+      let lastEndLine = 0;
+
+      for (const chunk of sortedChunks) {
+        // Add any code between chunks (imports, etc.)
+        if (chunk.startLine > lastEndLine + 1) {
+          const gapStart = Math.max(0, lastEndLine);
+          const gapEnd = chunk.startLine - 1;
+          const gapCode = lines.slice(gapStart, gapEnd).join('\n');
+          if (gapCode.trim()) {
+            codeParts.push(gapCode);
+          }
+        }
+
+        // Add chunk code
+        const chunkContent = await this.getChunkContent(chunk);
+        codeParts.push(chunkContent);
+
+        lastEndLine = Math.max(lastEndLine, chunk.endLine);
+      }
+
+      codeBlocks.set(filePath, codeParts.join('\n\n'));
+    }
+
+    return {
+      selectedChunks,
+      dependentChunks,
+      allChunks,
+      codeBlocks,
+      dependencyGraph,
+    };
+  }
+
+  /**
+   * Check if a chunk overlaps with a line range
+   */
+  private chunkOverlapsRange(chunk: Chunk, range: { start: number; end: number }): boolean {
+    // Check if chunk overlaps with range (inclusive boundaries)
+    return !(chunk.endLine < range.start || chunk.startLine > range.end);
   }
 }

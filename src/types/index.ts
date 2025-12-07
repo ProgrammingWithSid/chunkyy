@@ -121,8 +121,8 @@ export interface Parameter {
 }
 
 export interface Chunk extends ChunkMetadata {
-  /** The actual code content (only in memory) */
-  content: string;
+  /** The actual code content (only in memory, optional for memory efficiency) */
+  content?: string;
 }
 
 export interface ChunkingOptions {
@@ -152,6 +152,9 @@ export interface ChunkingOptions {
 
   /** File patterns to exclude */
   exclude?: string[];
+
+  /** Whether to include code content in chunks (default: false for memory efficiency) */
+  includeContent?: boolean;
 }
 
 export interface ChunkingResult {
@@ -171,6 +174,33 @@ export interface ChunkingResult {
 export interface DependencyGraph {
   /** Map from chunk ID to dependencies */
   [chunkId: string]: string[]; // Array of chunk IDs this chunk depends on
+}
+
+export interface FileRange {
+  /** Start line number (1-indexed) */
+  start: number;
+  /** End line number (1-indexed, inclusive) */
+  end: number;
+}
+
+export interface FileRangeRequest {
+  /** File path relative to project root */
+  filePath: string;
+  /** One or more line ranges in this file */
+  ranges: FileRange[];
+}
+
+export interface CodeExtractionResult {
+  /** Chunks found in the specified ranges */
+  selectedChunks: Chunk[];
+  /** Dependent chunks (functions, variables, etc. that selected chunks depend on) */
+  dependentChunks: Chunk[];
+  /** All chunks combined (selected + dependencies) */
+  allChunks: Chunk[];
+  /** Complete code blocks organized by file */
+  codeBlocks: Map<string, string>;
+  /** Dependency graph showing relationships */
+  dependencyGraph: DependencyGraph;
 }
 
 export interface ImportExportMap {

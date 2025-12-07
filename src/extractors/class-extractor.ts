@@ -10,10 +10,10 @@ export class ClassExtractor extends BaseExtractor {
   private methodExtractor: MethodExtractor;
   private functionExtractor: FunctionExtractor;
 
-  constructor(adapter: ParserAdapter) {
-    super(adapter);
-    this.methodExtractor = new MethodExtractor(adapter);
-    this.functionExtractor = new FunctionExtractor(adapter);
+  constructor(adapter: ParserAdapter, includeContent: boolean = false) {
+    super(adapter, includeContent);
+    this.methodExtractor = new MethodExtractor(adapter, includeContent);
+    this.functionExtractor = new FunctionExtractor(adapter, includeContent);
   }
 
   canHandle(node: ASTNode): boolean {
