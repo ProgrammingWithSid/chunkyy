@@ -60,9 +60,19 @@ export class Chunkyyy {
       ? ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.vue']
       : ['*.ts', '*.tsx', '*.js', '*.jsx', '*.vue'];
 
+    const ignorePatterns = [
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      '**/package-lock.json',
+      '**/pnpm-lock.yaml',
+      '**/yarn.lock',
+      ...(this.chunker.options.exclude || []),
+    ];
+
     const files = await fg(patterns, {
       cwd: fullPath,
-      ignore: ['node_modules/**', 'dist/**', 'build/**'],
+      ignore: ignorePatterns,
       absolute: true,
     });
 

@@ -51,4 +51,3 @@ if (fs.existsSync(distDir)) {
   console.error('dist directory not found');
   process.exit(1);
 }
-

@@ -44,7 +44,14 @@ export class Chunker {
       minChunkSize: options.minChunkSize || 50,
       rootDir: options.rootDir || process.cwd(),
       include: options.include || ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.vue'],
-      exclude: options.exclude || ['node_modules/**', 'dist/**', 'build/**'],
+      exclude: options.exclude || [
+        'node_modules/**',
+        'dist/**',
+        'build/**',
+        '**/package-lock.json',
+        '**/pnpm-lock.yaml',
+        '**/yarn.lock',
+      ],
       includeContent: options.includeContent ?? false, // Default to false for memory efficiency
     };
 
