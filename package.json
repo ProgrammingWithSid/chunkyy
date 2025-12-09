@@ -20,7 +20,7 @@
     "chunkyyy": "./dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/fix-requires.js",
     "dev": "tsc --watch",
     "test": "jest",
     "test:watch": "jest --watch",

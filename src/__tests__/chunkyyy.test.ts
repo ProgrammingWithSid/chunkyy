@@ -1,6 +1,6 @@
-import { Chunkyyy } from '../chunkyyy';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Chunkyyy } from '../chunkyyy';
 
 describe('Chunkyyy', () => {
   let chunkyyy: Chunkyyy;

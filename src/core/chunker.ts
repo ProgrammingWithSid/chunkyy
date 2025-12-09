@@ -2,27 +2,27 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as pathModule from 'path';
 import {
-    BaseExtractor,
-    ClassExtractor,
-    EnumExtractor,
-    FunctionExtractor,
-    InterfaceExtractor,
-    VueOptionsExtractor,
+  BaseExtractor,
+  ClassExtractor,
+  EnumExtractor,
+  FunctionExtractor,
+  InterfaceExtractor,
+  VueOptionsExtractor,
 } from '../extractors';
 import { createParser } from '../parsers';
 import {
-    Chunk,
-    ChunkingOptions,
-    ChunkingResult,
-    ChunkType,
-    CodeExtractionResult,
-    Dependency,
-    DependencyGraph,
-    ExportInfo,
-    FileRangeRequest,
-    ImportExportMap,
-    ImportInfo,
-    ParserAdapter,
+  Chunk,
+  ChunkingOptions,
+  ChunkingResult,
+  ChunkType,
+  CodeExtractionResult,
+  Dependency,
+  DependencyGraph,
+  ExportInfo,
+  FileRangeRequest,
+  ImportExportMap,
+  ImportInfo,
+  ParserAdapter,
 } from '../types';
 import { estimateTokenCount } from '../utils/token-count';
 

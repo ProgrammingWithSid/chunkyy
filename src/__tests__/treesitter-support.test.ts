@@ -1,7 +1,7 @@
-import { Chunkyyy } from '../chunkyyy';
-import { Chunker } from '../core/chunker';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Chunkyyy } from '../chunkyyy';
+import { Chunker } from '../core/chunker';
 
 describe('Tree-sitter Multi-Language Support', () => {
   let chunkyyy: Chunkyyy;
