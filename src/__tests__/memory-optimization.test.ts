@@ -1,6 +1,6 @@
-import { Chunker } from '../core/chunker';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Chunker } from '../core/chunker';
 
 describe('Memory Optimization', () => {
   let chunkerWithContent: Chunker;
@@ -10,11 +10,11 @@ describe('Memory Optimization', () => {
   beforeEach(() => {
     chunkerWithContent = new Chunker({
       parser: 'typescript',
-      includeContent: true
+      includeContent: true,
     });
     chunkerWithoutContent = new Chunker({
       parser: 'typescript',
-      includeContent: false
+      includeContent: false,
     });
 
     if (!fs.existsSync(testDir)) {
@@ -114,12 +114,12 @@ export function e() { return 5; }
       expect(chunksWith.length).toBe(chunksWithout.length);
 
       // But chunks without content should not have content property
-      chunksWithout.forEach(chunk => {
+      chunksWithout.forEach((chunk) => {
         expect(chunk.content).toBeUndefined();
       });
 
       // Chunks with content should have content
-      chunksWith.forEach(chunk => {
+      chunksWith.forEach((chunk) => {
         expect(chunk.content).toBeDefined();
       });
     });

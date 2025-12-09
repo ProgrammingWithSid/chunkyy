@@ -35,9 +35,7 @@ export class ClassExtractor extends BaseExtractor {
       return [];
     }
 
-    const qualifiedName = parentQualifiedName
-      ? `${parentQualifiedName}.${name}`
-      : name;
+    const qualifiedName = parentQualifiedName ? `${parentQualifiedName}.${name}` : name;
 
     const chunk = this.createChunk(
       node,
@@ -50,16 +48,13 @@ export class ClassExtractor extends BaseExtractor {
     );
 
     // Extract methods and nested classes
-    const nested = this.extractNested(
-      node,
-      sourceCode,
-      filePath,
-      qualifiedName,
-      [this.methodExtractor, this.functionExtractor]
-    );
+    const nested = this.extractNested(node, sourceCode, filePath, qualifiedName, [
+      this.methodExtractor,
+      this.functionExtractor,
+    ]);
 
     // Update chunk with children
-    chunk.childrenIds = nested.map(c => c.id);
+    chunk.childrenIds = nested.map((c) => c.id);
 
     return [chunk, ...nested];
   }

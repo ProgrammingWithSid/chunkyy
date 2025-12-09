@@ -18,7 +18,7 @@ describe('Chunker', () => {
       const chunks = chunker.chunkCode(code, 'test.ts');
       expect(chunks.length).toBeGreaterThan(0);
 
-      const functionChunk = chunks.find(c => c.type === 'function');
+      const functionChunk = chunks.find((c) => c.type === 'function');
       expect(functionChunk).toBeDefined();
       expect(functionChunk?.name).toBe('hello');
       expect(functionChunk?.exported).toBe(true);
@@ -40,11 +40,11 @@ describe('Chunker', () => {
       const chunks = chunker.chunkCode(code, 'test.ts');
       expect(chunks.length).toBeGreaterThan(0);
 
-      const classChunk = chunks.find(c => c.type === 'class');
+      const classChunk = chunks.find((c) => c.type === 'class');
       expect(classChunk).toBeDefined();
       expect(classChunk?.name).toBe('Calculator');
 
-      const methodChunks = chunks.filter(c => c.type === 'method');
+      const methodChunks = chunks.filter((c) => c.type === 'method');
       expect(methodChunks.length).toBe(2);
     });
 
@@ -58,7 +58,7 @@ describe('Chunker', () => {
       `;
 
       const chunks = chunker.chunkCode(code, 'test.ts');
-      const interfaceChunk = chunks.find(c => c.type === 'interface');
+      const interfaceChunk = chunks.find((c) => c.type === 'interface');
       expect(interfaceChunk).toBeDefined();
       expect(interfaceChunk?.name).toBe('User');
     });
@@ -73,7 +73,7 @@ describe('Chunker', () => {
       `;
 
       const chunks = chunker.chunkCode(code, 'test.ts');
-      const enumChunk = chunks.find(c => c.type === 'enum');
+      const enumChunk = chunks.find((c) => c.type === 'enum');
       expect(enumChunk).toBeDefined();
       expect(enumChunk?.name).toBe('Status');
     });
@@ -90,7 +90,7 @@ describe('Chunker', () => {
 
       const chunks = chunker.chunkCode(code, 'test.ts');
       // Should extract outer function
-      const outerChunk = chunks.find(c => c.name === 'outer');
+      const outerChunk = chunks.find((c) => c.name === 'outer');
       expect(outerChunk).toBeDefined();
     });
 
@@ -115,7 +115,7 @@ describe('Chunker', () => {
       `;
 
       const chunks = chunker.chunkCode(code, 'test.ts');
-      const classChunk = chunks.find(c => c.type === 'class');
+      const classChunk = chunks.find((c) => c.type === 'class');
       expect(classChunk?.decorators.length).toBeGreaterThan(0);
     });
 
@@ -130,7 +130,7 @@ describe('Chunker', () => {
       `;
 
       const chunks = chunker.chunkCode(code, 'test.ts');
-      const functionChunk = chunks.find(c => c.type === 'function');
+      const functionChunk = chunks.find((c) => c.type === 'function');
       expect(functionChunk?.dependencies.length).toBeGreaterThan(0);
     });
 
@@ -156,7 +156,7 @@ describe('Chunker', () => {
       `;
 
       const chunks = chunker.chunkCode(code, 'test.ts');
-      const functionChunk = chunks.find(c => c.type === 'function');
+      const functionChunk = chunks.find((c) => c.type === 'function');
       expect(functionChunk?.async).toBe(true);
     });
 
@@ -170,7 +170,7 @@ describe('Chunker', () => {
       `;
 
       const chunks = chunker.chunkCode(code, 'test.ts');
-      const functionChunk = chunks.find(c => c.type === 'function');
+      const functionChunk = chunks.find((c) => c.type === 'function');
       expect(functionChunk?.generator).toBe(true);
     });
 
@@ -185,7 +185,7 @@ describe('Chunker', () => {
 
       const chunks = chunker.chunkCode(code, 'test.ts');
       // Should extract the implementation
-      const functionChunk = chunks.find(c => c.name === 'process');
+      const functionChunk = chunks.find((c) => c.name === 'process');
       expect(functionChunk).toBeDefined();
     });
 
@@ -197,7 +197,7 @@ describe('Chunker', () => {
       `;
 
       const chunks = chunker.chunkCode(code, 'test.ts');
-      const functionChunk = chunks.find(c => c.type === 'function');
+      const functionChunk = chunks.find((c) => c.type === 'function');
       expect(functionChunk?.typeParameters).toContain('T');
     });
   });

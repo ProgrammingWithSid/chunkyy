@@ -2,7 +2,13 @@ import fg from 'fast-glob';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Chunker } from './core/chunker';
-import { Chunk, ChunkingOptions, ChunkingResult, CodeExtractionResult, FileRangeRequest } from './types';
+import {
+  Chunk,
+  ChunkingOptions,
+  ChunkingResult,
+  CodeExtractionResult,
+  FileRangeRequest,
+} from './types';
 
 /**
  * Main Chunkyyy class - high-level API
@@ -45,9 +51,14 @@ export class Chunkyyy {
   /**
    * Chunk a directory
    */
-  async chunkDirectory(dirPath: string, options: { recursive?: boolean } = {}): Promise<ChunkingResult> {
+  async chunkDirectory(
+    dirPath: string,
+    options: { recursive?: boolean } = {}
+  ): Promise<ChunkingResult> {
     const fullPath = path.resolve(dirPath);
-    const patterns = options.recursive ? ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'] : ['*.ts', '*.tsx', '*.js', '*.jsx'];
+    const patterns = options.recursive
+      ? ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.vue']
+      : ['*.ts', '*.tsx', '*.js', '*.jsx', '*.vue'];
 
     const files = await fg(patterns, {
       cwd: fullPath,
@@ -55,7 +66,7 @@ export class Chunkyyy {
       absolute: true,
     });
 
-    const relativeFiles = files.map(f => path.relative(this.chunker.options.rootDir, f));
+    const relativeFiles = files.map((f) => path.relative(this.chunker.options.rootDir, f));
     return this.chunker.chunkFiles(relativeFiles);
   }
 

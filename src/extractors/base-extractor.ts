@@ -18,7 +18,12 @@ export abstract class BaseExtractor {
   /**
    * Extract chunks from an AST node
    */
-  abstract extract(node: ASTNode, sourceCode: string, filePath: string, parentQualifiedName?: string): Chunk[];
+  abstract extract(
+    node: ASTNode,
+    sourceCode: string,
+    filePath: string,
+    parentQualifiedName?: string
+  ): Chunk[];
 
   /**
    * Check if this extractor can handle the given node
@@ -49,10 +54,14 @@ export abstract class BaseExtractor {
 
     // Extract content only if includeContent is true (for memory efficiency)
     const content = this.includeContent ? this.adapter.extractCode(node, sourceCode) : '';
-    const hash = generateChunkHash(content || this.adapter.extractCode(node, sourceCode), filePath, {
-      startLine: range.start.line,
-      endLine: range.end.line,
-    });
+    const hash = generateChunkHash(
+      content || this.adapter.extractCode(node, sourceCode),
+      filePath,
+      {
+        startLine: range.start.line,
+        endLine: range.end.line,
+      }
+    );
 
     const chunkId = generateChunkId(filePath, qualifiedName, type);
     const parentId = parentQualifiedName

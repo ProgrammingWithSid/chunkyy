@@ -34,13 +34,13 @@ app.post('/api/chunk', async (req, res) => {
     const chunks = chunkyyy.chunkCode(code, filePath);
 
     res.json({
-      chunks: chunks.map(chunk => ({
+      chunks: chunks.map((chunk) => ({
         ...chunk,
         content: undefined, // Don't send content in response by default
       })),
       count: chunks.length,
     });
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     res.status(500).json({
       error: errorMessage,
@@ -66,13 +66,13 @@ app.post('/api/chunk/file', async (req, res) => {
     const chunks = await chunkyyy.chunkFile(filePath);
 
     res.json({
-      chunks: chunks.map(chunk => ({
+      chunks: chunks.map((chunk) => ({
         ...chunk,
         content: undefined,
       })),
       count: chunks.length,
     });
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     res.status(500).json({
       error: errorMessage,
@@ -99,12 +99,12 @@ app.post('/api/chunk/directory', async (req, res) => {
 
     res.json({
       ...result,
-      chunks: result.chunks.map(chunk => ({
+      chunks: result.chunks.map((chunk) => ({
         ...chunk,
         content: undefined,
       })),
     });
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     res.status(500).json({
       error: errorMessage,
@@ -145,7 +145,7 @@ app.post('/api/analyze/dependencies', async (req, res) => {
         imports: Object.fromEntries(importExportMap.imports),
       },
     });
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     res.status(500).json({
       error: errorMessage,
@@ -200,7 +200,7 @@ app.get('/api/metadata/:chunkId', async (req, res) => {
         parentId: chunk.parentId,
       },
     });
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     res.status(500).json({
       error: errorMessage,
@@ -248,15 +248,15 @@ app.post('/api/extract', async (req, res) => {
     });
 
     res.json({
-      selectedChunks: result.selectedChunks.map(chunk => ({
+      selectedChunks: result.selectedChunks.map((chunk) => ({
         ...chunk,
         content: undefined, // Don't send content by default
       })),
-      dependentChunks: result.dependentChunks.map(chunk => ({
+      dependentChunks: result.dependentChunks.map((chunk) => ({
         ...chunk,
         content: undefined,
       })),
-      allChunks: result.allChunks.map(chunk => ({
+      allChunks: result.allChunks.map((chunk) => ({
         ...chunk,
         content: undefined,
       })),
@@ -269,7 +269,7 @@ app.post('/api/extract', async (req, res) => {
         filesCount: result.codeBlocks.size,
       },
     });
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     res.status(500).json({
       error: errorMessage,
@@ -338,7 +338,8 @@ app.get('/api/docs', (req, res) => {
         path: '/api/extract',
         description: 'Extract code chunks with dependencies for specified file ranges',
         body: {
-          requests: 'FileRangeRequest[] (required) - Array of { filePath: string, ranges: [{ start: number, end: number }] }',
+          requests:
+            'FileRangeRequest[] (required) - Array of { filePath: string, ranges: [{ start: number, end: number }] }',
         },
       },
     ],

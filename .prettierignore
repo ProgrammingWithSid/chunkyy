@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# Cache
+.chunkyyy-cache/
+
+# Lock files
+yarn.lock
+pnpm-lock.yaml
+
+# Generated files
+*.d.ts.map
+*.js.map
+
+# Test temp files
+test-temp/
+
+# Documentation (optional - uncomment if you don't want to format docs)
+# docs/
+# examples/

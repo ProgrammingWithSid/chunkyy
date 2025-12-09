@@ -16,5 +16,5 @@ export function splitIntoTokens(code: string): string[] {
   // Simple tokenization: split by whitespace and punctuation
   return code
     .split(/\s+|([{}();,.\-+*/=<>!&|])/g)
-    .filter(token => token && token.trim().length > 0);
+    .filter((token) => token && token.trim().length > 0);
 }

@@ -7,9 +7,23 @@ import {
     EnumExtractor,
     FunctionExtractor,
     InterfaceExtractor,
+    VueOptionsExtractor,
 } from '../extractors';
 import { createParser } from '../parsers';
-import { Chunk, ChunkingOptions, ChunkingResult, ChunkType, CodeExtractionResult, Dependency, DependencyGraph, ExportInfo, FileRangeRequest, ImportExportMap, ImportInfo, ParserAdapter } from '../types';
+import {
+    Chunk,
+    ChunkingOptions,
+    ChunkingResult,
+    ChunkType,
+    CodeExtractionResult,
+    Dependency,
+    DependencyGraph,
+    ExportInfo,
+    FileRangeRequest,
+    ImportExportMap,
+    ImportInfo,
+    ParserAdapter,
+} from '../types';
 import { estimateTokenCount } from '../utils/token-count';
 
 /**
@@ -21,6 +35,7 @@ export class Chunker {
 
   constructor(options: ChunkingOptions = {}) {
     this.options = {
+      // Default to 'typescript' for TS/JS, but auto-detect will use tree-sitter for other languages
       parser: options.parser || 'typescript',
       chunkSize: options.chunkSize || 512,
       overlap: options.overlap || 50,
@@ -28,7 +43,7 @@ export class Chunker {
       mergeSmallChunks: options.mergeSmallChunks ?? true,
       minChunkSize: options.minChunkSize || 50,
       rootDir: options.rootDir || process.cwd(),
-      include: options.include || ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+      include: options.include || ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.vue'],
       exclude: options.exclude || ['node_modules/**', 'dist/**', 'build/**'],
       includeContent: options.includeContent ?? false, // Default to false for memory efficiency
     };
@@ -41,6 +56,7 @@ export class Chunker {
       new InterfaceExtractor(tempAdapter, this.options.includeContent),
       new EnumExtractor(tempAdapter, this.options.includeContent),
       new FunctionExtractor(tempAdapter, this.options.includeContent),
+      new VueOptionsExtractor(tempAdapter, this.options.includeContent),
     ];
   }
 
@@ -55,22 +71,19 @@ export class Chunker {
    * Update adapters for all extractors, including nested ones
    */
   private updateExtractorAdapters(adapter: ParserAdapter): void {
-    this.extractors.forEach(extractor => {
-      (extractor as unknown as { adapter: ParserAdapter }).adapter = adapter;
+    this.extractors.forEach((extractor) => {
+      // All extractors extend BaseExtractor which has protected adapter
+      // Use Object.defineProperty to update protected property
+      Object.defineProperty(extractor, 'adapter', {
+        value: adapter,
+        writable: true,
+        configurable: true,
+      });
 
       // Update nested extractors in ClassExtractor
-      if (extractor instanceof ClassExtractor) {
-        const classExtractor = extractor as unknown as {
-          methodExtractor?: { adapter: ParserAdapter };
-          functionExtractor?: { adapter: ParserAdapter };
-        };
-        if (classExtractor.methodExtractor) {
-          classExtractor.methodExtractor.adapter = adapter;
-        }
-        if (classExtractor.functionExtractor) {
-          classExtractor.functionExtractor.adapter = adapter;
-        }
-      }
+      // Note: ClassExtractor's nested extractors are updated when ClassExtractor is constructed
+      // They receive the adapter at construction time, so no manual update needed here
+      // If adapter changes, ClassExtractor would need to be recreated
     });
   }
 
@@ -93,6 +106,8 @@ export class Chunker {
       // Update extractors with the adapter (including nested extractors)
       this.updateExtractorAdapters(adapter);
 
+      // For tree-sitter, we need async initialization, but for now use sync parse
+      // In production, you'd want to pre-initialize or use async chunkCode
       const ast = adapter.parse(sourceCode, filePath);
       const root = adapter.getRoot(ast);
       const topLevelDecls = adapter.getTopLevelDeclarations(root);
@@ -108,10 +123,10 @@ export class Chunker {
           if (extractor.canHandle(decl)) {
             const extracted = extractor.extract(decl, sourceCode, filePath);
             // Add file-level imports to each chunk
-            extracted.forEach(chunk => {
+            extracted.forEach((chunk) => {
               // Merge file imports with chunk-specific imports
-              const existingSources = new Set(chunk.dependencies.map(d => d.source));
-              fileImports.forEach(imp => {
+              const existingSources = new Set(chunk.dependencies.map((d) => d.source));
+              fileImports.forEach((imp) => {
                 if (!existingSources.has(imp.source)) {
                   chunk.dependencies.push(imp);
                 }
@@ -125,7 +140,8 @@ export class Chunker {
       // Post-process chunks
       return this.postProcessChunks(chunks, sourceCode);
     } catch (error) {
-      console.error(`Error chunking ${filePath}:`, error);
+      // Silently return empty array on error (library should not log by default)
+      // Users can catch errors from chunkFile if needed
       return [];
     }
   }
@@ -143,18 +159,20 @@ export class Chunker {
 
     for (const chunk of chunks) {
       // Calculate size - use tokenCount if available, otherwise estimate from content or range
-      const size = chunk.tokenCount ||
-        (chunk.content ? estimateTokenCount(chunk.content) :
-         this.estimateSizeFromRange(chunk));
+      const size =
+        chunk.tokenCount ||
+        (chunk.content ? estimateTokenCount(chunk.content) : this.estimateSizeFromRange(chunk));
 
       // Don't merge method chunks - they should remain separate
       const isMethod = chunk.type === 'method';
 
       if (size < this.options.minChunkSize && currentChunk && !isMethod) {
         // Merge with previous chunk if both are small (but not methods)
-        const currentSize = currentChunk.tokenCount ||
-          (currentChunk.content ? estimateTokenCount(currentChunk.content) :
-           this.estimateSizeFromRange(currentChunk));
+        const currentSize =
+          currentChunk.tokenCount ||
+          (currentChunk.content
+            ? estimateTokenCount(currentChunk.content)
+            : this.estimateSizeFromRange(currentChunk));
         if (currentSize + size <= this.options.chunkSize) {
           // Merge chunks
           const mergedContent = this.mergeChunkContent(currentChunk, chunk, sourceCode);
@@ -315,26 +333,29 @@ export class Chunker {
       }
     } else if (dep.source) {
       // Absolute/package import - find by package name
-      const matchingChunks = allChunks.filter(c => {
-        return c.filePath.includes(dep.source) &&
-               (c.exportName === dep.name || c.name === dep.name);
+      const matchingChunks = allChunks.filter((c) => {
+        return (
+          c.filePath.includes(dep.source) && (c.exportName === dep.name || c.name === dep.name)
+        );
       });
       resolved.push(...matchingChunks);
     }
 
     // Strategy 2: Find by export name in same file
     if (resolved.length === 0) {
-      const sameFileChunks = allChunks.filter(c => {
-        return c.filePath === fromFilePath &&
-               (c.exportName === dep.name || c.name === dep.name) &&
-               c.exported;
+      const sameFileChunks = allChunks.filter((c) => {
+        return (
+          c.filePath === fromFilePath &&
+          (c.exportName === dep.name || c.name === dep.name) &&
+          c.exported
+        );
       });
       resolved.push(...sameFileChunks);
     }
 
     // Strategy 3: Find by name globally (fallback)
     if (resolved.length === 0) {
-      const globalMatches = allChunks.filter(c => {
+      const globalMatches = allChunks.filter((c) => {
         return (c.exportName === dep.name || c.name === dep.name) && c.exported;
       });
       resolved.push(...globalMatches);
@@ -351,7 +372,7 @@ export class Chunker {
     const resolved = pathModule.resolve(dir, importPath);
 
     // Try common extensions
-    const extensions = ['.ts', '.tsx', '.js', '.jsx', ''];
+    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.vue', ''];
     for (const ext of extensions) {
       const withExt = resolved + ext;
       if (this.fileExists(withExt)) {
@@ -375,8 +396,6 @@ export class Chunker {
    */
   private fileExists(filePath: string): boolean {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const fs = require('fs');
       return fs.existsSync(filePath);
     } catch {
       return false;
@@ -496,7 +515,8 @@ export class Chunker {
 
     for (const chunk of chunks) {
       chunksByType[chunk.type]++;
-      totalTokens += chunk.tokenCount ||
+      totalTokens +=
+        chunk.tokenCount ||
         (chunk.content ? estimateTokenCount(chunk.content) : this.estimateSizeFromRange(chunk));
     }
 
@@ -624,6 +644,11 @@ export class Chunker {
     // Build code blocks for each file
     for (const [filePath, chunks] of chunksByFile.entries()) {
       const fullPath = path.resolve(this.options.rootDir, filePath);
+      if (!fs.existsSync(fullPath)) {
+        // File might have been deleted or path is incorrect
+        // Skip this file silently (library should not log by default)
+        continue;
+      }
       const sourceCode = fs.readFileSync(fullPath, 'utf-8');
       const lines = sourceCode.split('\n');
 

@@ -19,7 +19,7 @@ function parseArgs(): CLIArgs {
   const args = process.argv.slice(2);
   const command = args[0];
   const parsed: CLIArgs = {
-    command: (command === 'chunk' || command === 'watch' || command === 'serve') ? command : 'chunk',
+    command: command === 'chunk' || command === 'watch' || command === 'serve' ? command : 'chunk',
   };
 
   for (let i = 1; i < args.length; i++) {
@@ -92,7 +92,9 @@ async function chunkCommand(args: CLIArgs) {
   // Output results
   if (args.output) {
     fs.writeFileSync(args.output, JSON.stringify(result, null, 2));
-    console.log(`✓ Chunked ${result.stats.totalFiles} files into ${result.stats.totalChunks} chunks`);
+    console.log(
+      `✓ Chunked ${result.stats.totalFiles} files into ${result.stats.totalChunks} chunks`
+    );
     console.log(`✓ Results written to ${args.output}`);
   } else if (args.outputDir) {
     // Write individual chunk files
@@ -107,13 +109,22 @@ async function chunkCommand(args: CLIArgs) {
 
     // Write metadata
     const metadataFile = path.join(args.outputDir, 'metadata.json');
-    fs.writeFileSync(metadataFile, JSON.stringify({
-      dependencyGraph: result.dependencyGraph,
-      importExportMap: result.importExportMap,
-      stats: result.stats,
-    }, null, 2));
+    fs.writeFileSync(
+      metadataFile,
+      JSON.stringify(
+        {
+          dependencyGraph: result.dependencyGraph,
+          importExportMap: result.importExportMap,
+          stats: result.stats,
+        },
+        null,
+        2
+      )
+    );
 
-    console.log(`✓ Chunked ${result.stats.totalFiles} files into ${result.stats.totalChunks} chunks`);
+    console.log(
+      `✓ Chunked ${result.stats.totalFiles} files into ${result.stats.totalChunks} chunks`
+    );
     console.log(`✓ Chunks written to ${args.outputDir}`);
   } else {
     // Output to stdout

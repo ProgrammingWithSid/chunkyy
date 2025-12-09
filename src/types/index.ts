@@ -3,7 +3,18 @@
  */
 
 export type ParserType = 'typescript' | 'swc' | 'babel' | 'esprima' | 'treesitter';
-export type SupportedLanguage = 'typescript' | 'javascript' | 'python' | 'java' | 'go' | 'rust' | 'cpp' | 'c' | 'ruby' | 'php';
+export type SupportedLanguage =
+  | 'typescript'
+  | 'javascript'
+  | 'python'
+  | 'java'
+  | 'go'
+  | 'rust'
+  | 'cpp'
+  | 'c'
+  | 'ruby'
+  | 'php'
+  | 'vue';
 
 export type ChunkType =
   | 'function'
@@ -94,6 +105,17 @@ export interface ChunkMetadata {
 
   /** Size in tokens (approximate) */
   tokenCount?: number;
+
+  /** Vue-specific metadata */
+  vueOptionType?:
+    | 'method'
+    | 'computed'
+    | 'watcher'
+    | 'data'
+    | 'lifecycle-hook'
+    | 'prop'
+    | 'emit'
+    | 'setup';
 }
 
 export interface Dependency {
@@ -236,7 +258,18 @@ export interface ChunkingStats {
 export interface ASTNode {
   type: string;
   range?: Range;
-  [key: string]: unknown;
+  /** Name of the node */
+  name?: string;
+  /** Language this node belongs to */
+  language?: string;
+  /** TypeScript-specific node (for TypeScript/Vue adapters) */
+  _tsNode?: object;
+  /** Tree-sitter-specific node (for Tree-sitter adapter) */
+  _treeSitterNode?: object | null;
+  /** Tree-sitter-specific tree (for Tree-sitter adapter) */
+  _treeSitterTree?: object;
+  /** Additional properties for parser-specific data */
+  [key: string]: string | number | boolean | Range | ASTNode[] | object | null | undefined;
 }
 
 export interface ParserAdapter {

@@ -2,6 +2,7 @@ import { ParserAdapter, ParserType } from '../types';
 import { detectLanguage, getParserTypeForLanguage } from '../utils/language-detector';
 import { TreeSitterAdapter } from './treesitter-adapter';
 import { TypeScriptAdapter } from './typescript-adapter';
+import { VueAdapter } from './vue-adapter';
 
 /**
  * Create a parser adapter based on type and file path
@@ -16,11 +17,22 @@ export function createParser(type: ParserType, filePath?: string): ParserAdapter
   // Auto-detect parser type from file path if not specified
   if (filePath && type === 'typescript') {
     const detectedLanguage = detectLanguage(filePath);
+
+    // Handle Vue files specially
+    if (detectedLanguage === 'vue') {
+      return new VueAdapter();
+    }
+
     const detectedParserType = getParserTypeForLanguage(detectedLanguage);
 
     if (detectedParserType === 'treesitter') {
       return new TreeSitterAdapter(detectedLanguage);
     }
+  }
+
+  // Handle Vue files when explicitly requested
+  if (filePath && filePath.endsWith('.vue')) {
+    return new VueAdapter();
   }
 
   switch (type) {
@@ -46,3 +58,4 @@ export function createParser(type: ParserType, filePath?: string): ParserAdapter
 export { ParserAdapter } from '../types';
 export { TreeSitterAdapter } from './treesitter-adapter';
 export { TypeScriptAdapter } from './typescript-adapter';
+export { VueAdapter } from './vue-adapter';

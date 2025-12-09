@@ -43,7 +43,7 @@ async function benchmarkFile(filePath: string): Promise<BenchmarkResult> {
       timeMs,
       errors,
     };
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     errors.push(errorMessage);
     return {
@@ -59,7 +59,8 @@ async function benchmarkFile(filePath: string): Promise<BenchmarkResult> {
 }
 
 async function benchmarkDirectory(dirPath: string): Promise<BenchmarkResult[]> {
-  const files = fs.readdirSync(dirPath, { recursive: true })
+  const files = fs
+    .readdirSync(dirPath, { recursive: true })
     .filter((f): f is string => typeof f === 'string' && (f.endsWith('.ts') || f.endsWith('.tsx')))
     .map((f: string) => path.join(dirPath, f));
 

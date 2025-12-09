@@ -7,12 +7,9 @@ describe('extractCodeWithDependencies', () => {
   const testDir = path.join(__dirname, '../../test-temp');
 
   beforeEach(() => {
-    chunker = new Chunker({ parser: 'typescript', includeContent: true });
-
-    // Create test directory
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true });
-    }
+    // Create test directory first
+    fs.mkdirSync(testDir, { recursive: true });
+    chunker = new Chunker({ parser: 'typescript', includeContent: true, rootDir: process.cwd() });
   });
 
   afterEach(() => {
@@ -38,6 +35,7 @@ describe('extractCodeWithDependencies', () => {
 
   describe('basic extraction', () => {
     it('should extract chunks for single file with single range', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'test1.ts');
       const code = `
 export function helper() {
@@ -83,7 +81,7 @@ export function func3() {
         {
           filePath: 'test-temp/test2.ts',
           ranges: [
-            { start: 2, end: 4 },  // func1
+            { start: 2, end: 4 }, // func1
             { start: 10, end: 12 }, // func3
           ],
         },
@@ -91,12 +89,13 @@ export function func3() {
 
       // Functions span multiple lines, so ranges may capture overlapping chunks
       expect(result.selectedChunks.length).toBeGreaterThanOrEqual(1);
-      const funcNames = result.selectedChunks.map(c => c.name);
+      const funcNames = result.selectedChunks.map((c) => c.name);
       // Verify we got some functions
       expect(funcNames.length).toBeGreaterThan(0);
     });
 
     it('should extract chunks for multiple files', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const file1 = path.join(testDir, 'file1.ts');
       const file2 = path.join(testDir, 'file2.ts');
 
@@ -142,28 +141,35 @@ export function main() {
       ]);
 
       // Helper function might be in selected chunks if range overlaps, or in dependencies
-      const helperChunk = result.allChunks.find(c => c.name === 'helper');
+      const helperChunk = result.allChunks.find((c) => c.name === 'helper');
       expect(helperChunk).toBeDefined();
       expect(result.dependencyGraph).toBeDefined();
     });
 
     it('should include dependencies from imported files', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const utilsFile = path.join(testDir, 'utils.ts');
       const mainFile = path.join(testDir, 'main.ts');
 
-      fs.writeFileSync(utilsFile, `
+      fs.writeFileSync(
+        utilsFile,
+        `
 export function helper() {
   return 42;
 }
-`);
+`
+      );
 
-      fs.writeFileSync(mainFile, `
+      fs.writeFileSync(
+        mainFile,
+        `
 import { helper } from './utils';
 
 export function main() {
   return helper();
 }
-`);
+`
+      );
 
       const result = await chunker.extractCodeWithDependencies([
         {
@@ -178,6 +184,7 @@ export function main() {
     });
 
     it('should build dependency graph correctly', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'graph.ts');
       const code = `
 export function a() {
@@ -208,6 +215,7 @@ export function c() {
 
   describe('chunk overlap detection', () => {
     it('should find chunks that overlap with range', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'overlap.ts');
       const code = `
 export class Calculator {
@@ -222,20 +230,24 @@ export class Calculator {
 `;
       fs.writeFileSync(testFile, code);
 
+      // Use relative path from rootDir (process.cwd())
+      const relativePath = path.relative(process.cwd(), testFile);
+
       // Range that overlaps with class but not fully covers it
       const result = await chunker.extractCodeWithDependencies([
         {
-          filePath: 'test-temp/overlap.ts',
+          filePath: relativePath,
           ranges: [{ start: 3, end: 5 }], // Part of the class
         },
       ]);
 
-      const classChunk = result.selectedChunks.find(c => c.type === 'class');
+      const classChunk = result.selectedChunks.find((c) => c.type === 'class');
       expect(classChunk).toBeDefined();
       expect(classChunk?.name).toBe('Calculator');
     });
 
     it('should handle ranges that span multiple chunks', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'span.ts');
       const code = `
 export function a() {
@@ -267,6 +279,7 @@ export function c() {
 
   describe('code blocks generation', () => {
     it('should generate code blocks for extracted chunks', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'blocks.ts');
       const code = `
 export function test() {
@@ -289,6 +302,7 @@ export function test() {
     });
 
     it('should include imports in code blocks', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'imports.ts');
       const code = `
 import { helper } from './utils';
@@ -313,6 +327,7 @@ export function main() {
 
   describe('edge cases', () => {
     it('should handle empty ranges gracefully', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'empty.ts');
       fs.writeFileSync(testFile, 'export function test() { return 1; }');
 
@@ -339,6 +354,7 @@ export function main() {
     });
 
     it('should handle invalid ranges', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'invalid.ts');
       fs.writeFileSync(testFile, 'export function test() { return 1; }');
 
@@ -357,6 +373,7 @@ export function main() {
 
   describe('complex scenarios', () => {
     it('should handle classes with methods', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'class.ts');
       const code = `
 export class Calculator {
@@ -378,28 +395,35 @@ export class Calculator {
         },
       ]);
 
-      const classChunk = result.selectedChunks.find(c => c.type === 'class');
+      const classChunk = result.selectedChunks.find((c) => c.type === 'class');
       expect(classChunk).toBeDefined();
 
       // Should include methods
-      const methodChunks = result.allChunks.filter(c => c.type === 'method');
+      const methodChunks = result.allChunks.filter((c) => c.type === 'method');
       expect(methodChunks.length).toBeGreaterThan(0);
     });
 
     it('should handle nested dependencies', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const file1 = path.join(testDir, 'nested1.ts');
       const file2 = path.join(testDir, 'nested2.ts');
       const file3 = path.join(testDir, 'nested3.ts');
 
       fs.writeFileSync(file1, 'export function level1() { return 1; }');
-      fs.writeFileSync(file2, `
+      fs.writeFileSync(
+        file2,
+        `
 import { level1 } from './nested1';
 export function level2() { return level1(); }
-`);
-      fs.writeFileSync(file3, `
+`
+      );
+      fs.writeFileSync(
+        file3,
+        `
 import { level2 } from './nested2';
 export function level3() { return level2(); }
-`);
+`
+      );
 
       const result = await chunker.extractCodeWithDependencies([
         {

@@ -24,9 +24,7 @@ export class InterfaceExtractor extends BaseExtractor {
       return [];
     }
 
-    const qualifiedName = parentQualifiedName
-      ? `${parentQualifiedName}.${name}`
-      : name;
+    const qualifiedName = parentQualifiedName ? `${parentQualifiedName}.${name}` : name;
 
     const chunk = this.createChunk(
       node,

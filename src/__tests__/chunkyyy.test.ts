@@ -16,22 +16,32 @@ describe('Chunkyyy', () => {
   });
 
   afterEach(() => {
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
     chunkyyy.clearCache();
+    // Clean up test directory - handle errors gracefully
+    if (fs.existsSync(testDir)) {
+      try {
+        fs.rmSync(testDir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors - directory might be in use
+      }
+    }
   });
 
   describe('chunkFile', () => {
     it('should chunk a single file', async () => {
       const testFile = path.join(testDir, 'test.ts');
-      fs.writeFileSync(testFile, `
+      fs.writeFileSync(
+        testFile,
+        `
 export function hello() {
   return 'world';
 }
-`);
+`
+      );
 
-      const chunks = await chunkyyy.chunkFile('test-temp/test.ts');
+      // Use relative path from process.cwd()
+      const relativePath = path.relative(process.cwd(), testFile);
+      const chunks = await chunkyyy.chunkFile(relativePath);
       expect(chunks.length).toBeGreaterThan(0);
       expect(chunks[0].name).toBe('hello');
     });
@@ -40,31 +50,31 @@ export function hello() {
       const testFile = path.join(testDir, 'cache.ts');
       fs.writeFileSync(testFile, 'export function test() { return 1; }');
 
-      const chunks1 = await chunkyyy.chunkFile('test-temp/cache.ts');
-      const chunks2 = await chunkyyy.chunkFile('test-temp/cache.ts');
+      const relativePath = path.relative(process.cwd(), testFile);
+      const chunks1 = await chunkyyy.chunkFile(relativePath);
+      const chunks2 = await chunkyyy.chunkFile(relativePath);
 
       expect(chunks1).toEqual(chunks2);
     });
 
     it('should invalidate cache on file change', async () => {
       const testFile = path.join(testDir, 'invalidate.ts');
-
-      // Ensure directory exists
-      if (!fs.existsSync(testDir)) {
-        fs.mkdirSync(testDir, { recursive: true });
-      }
-
+      fs.mkdirSync(testDir, { recursive: true });
       fs.writeFileSync(testFile, 'export function a() { return 1; }');
 
-      const chunks1 = await chunkyyy.chunkFile('test-temp/invalidate.ts');
+      // Use relative path from process.cwd()
+      const relativePath = path.relative(process.cwd(), testFile);
+      const chunks1 = await chunkyyy.chunkFile(relativePath);
       expect(chunks1[0].name).toBe('a');
 
       // Clear cache and modify file
-      chunkyyy.clearCache('test-temp/invalidate.ts');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      chunkyyy.clearCache(relativePath);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Ensure directory exists before writing
+      fs.mkdirSync(testDir, { recursive: true });
       fs.writeFileSync(testFile, 'export function b() { return 2; }');
 
-      const chunks2 = await chunkyyy.chunkFile('test-temp/invalidate.ts');
+      const chunks2 = await chunkyyy.chunkFile(relativePath);
       expect(chunks2[0].name).toBe('b');
     });
   });
@@ -96,6 +106,7 @@ export function test() {
 
   describe('chunkDirectory', () => {
     it('should chunk all files in directory', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       fs.writeFileSync(path.join(testDir, 'file1.ts'), 'export function a() { return 1; }');
       fs.writeFileSync(path.join(testDir, 'file2.ts'), 'export function b() { return 2; }');
 
@@ -106,6 +117,7 @@ export function test() {
     });
 
     it('should handle recursive directory chunking', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const subDir = path.join(testDir, 'subdir');
       fs.mkdirSync(subDir, { recursive: true });
       fs.writeFileSync(path.join(subDir, 'file.ts'), 'export function c() { return 3; }');
@@ -118,8 +130,11 @@ export function test() {
 
   describe('extractCodeWithDependencies', () => {
     it('should extract code with dependencies', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'extract.ts');
-      fs.writeFileSync(testFile, `
+      fs.writeFileSync(
+        testFile,
+        `
 export function helper() {
   return 42;
 }
@@ -127,7 +142,8 @@ export function helper() {
 export function main() {
   return helper();
 }
-`);
+`
+      );
 
       const result = await chunkyyy.extractCodeWithDependencies([
         {
@@ -141,12 +157,16 @@ export function main() {
     });
 
     it('should handle multiple ranges', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'multi.ts');
-      fs.writeFileSync(testFile, `
+      fs.writeFileSync(
+        testFile,
+        `
 export function a() { return 1; }
 export function b() { return 2; }
 export function c() { return 3; }
-`);
+`
+      );
 
       const result = await chunkyyy.extractCodeWithDependencies([
         {
@@ -166,28 +186,35 @@ export function c() { return 3; }
 
   describe('clearCache', () => {
     it('should clear cache for specific file', async () => {
+      fs.mkdirSync(testDir, { recursive: true });
       const testFile = path.join(testDir, 'clear.ts');
       fs.writeFileSync(testFile, 'export function test() { return 1; }');
 
-      await chunkyyy.chunkFile('test-temp/clear.ts');
-      chunkyyy.clearCache('test-temp/clear.ts');
+      const relativePath = path.relative(process.cwd(), testFile);
+      await chunkyyy.chunkFile(relativePath);
+      chunkyyy.clearCache(relativePath);
 
       // Cache should be cleared
-      const chunks = await chunkyyy.chunkFile('test-temp/clear.ts');
+      const chunks = await chunkyyy.chunkFile(relativePath);
       expect(chunks.length).toBeGreaterThan(0);
     });
 
     it('should clear all cache', async () => {
-      fs.writeFileSync(path.join(testDir, 'clear1.ts'), 'export function a() { return 1; }');
-      fs.writeFileSync(path.join(testDir, 'clear2.ts'), 'export function b() { return 2; }');
+      fs.mkdirSync(testDir, { recursive: true });
+      const testFile1 = path.join(testDir, 'clear1.ts');
+      const testFile2 = path.join(testDir, 'clear2.ts');
+      fs.writeFileSync(testFile1, 'export function a() { return 1; }');
+      fs.writeFileSync(testFile2, 'export function b() { return 2; }');
 
-      await chunkyyy.chunkFile('test-temp/clear1.ts');
-      await chunkyyy.chunkFile('test-temp/clear2.ts');
+      const relativePath1 = path.relative(process.cwd(), testFile1);
+      const relativePath2 = path.relative(process.cwd(), testFile2);
+      await chunkyyy.chunkFile(relativePath1);
+      await chunkyyy.chunkFile(relativePath2);
 
       chunkyyy.clearCache();
 
       // Should still work after clearing
-      const chunks = await chunkyyy.chunkFile('test-temp/clear1.ts');
+      const chunks = await chunkyyy.chunkFile(relativePath1);
       expect(chunks.length).toBeGreaterThan(0);
     });
   });

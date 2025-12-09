@@ -1,0 +1,58 @@
+# Source files
+src/
+*.ts
+!*.d.ts
+
+# Test files
+**/__tests__/
+**/*.test.ts
+**/*.spec.ts
+jest.config.js
+
+# Development files
+.git/
+.gitignore
+.editorconfig
+.prettierrc
+.eslintrc*
+tsconfig.json
+Makefile
+
+# Documentation (keep README.md)
+docs/
+examples/
+
+# Development dependencies
+node_modules/
+coverage/
+*.log
+.DS_Store
+.env
+*.tsbuildinfo
+.chunkyyy-cache/
+
+# Comparison and reference documents
+COMPARISON.md
+ENHANCEMENTS.md
+GITHUB_SETUP.md
+*chunkx*
+*comparison*
+*.pdf
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+test-temp/
+tmp/
+temp/

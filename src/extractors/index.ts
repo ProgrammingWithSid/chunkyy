@@ -4,3 +4,4 @@ export { EnumExtractor } from './enum-extractor';
 export { FunctionExtractor } from './function-extractor';
 export { InterfaceExtractor } from './interface-extractor';
 export { MethodExtractor } from './method-extractor';
+export { VueOptionsExtractor } from './vue-options-extractor';

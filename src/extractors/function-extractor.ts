@@ -1,6 +1,7 @@
 import * as ts from 'typescript';
 import { ASTNode, Chunk, ChunkType } from '../types';
 import { BaseExtractor } from './base-extractor';
+import { getTypeScriptNode } from '../utils/type-guards';
 
 /**
  * Extracts function declarations and expressions
@@ -8,7 +9,8 @@ import { BaseExtractor } from './base-extractor';
 export class FunctionExtractor extends BaseExtractor {
   canHandle(node: ASTNode): boolean {
     // Don't handle method declarations - those are handled by MethodExtractor
-    const tsNode = node as unknown as ts.Node;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode) return false;
     if (ts.isMethodDeclaration(tsNode)) {
       return false;
     }
@@ -36,9 +38,7 @@ export class FunctionExtractor extends BaseExtractor {
       return [];
     }
 
-    const qualifiedName = parentQualifiedName
-      ? `${parentQualifiedName}.${name}`
-      : name;
+    const qualifiedName = parentQualifiedName ? `${parentQualifiedName}.${name}` : name;
 
     const chunk = this.createChunk(
       node,

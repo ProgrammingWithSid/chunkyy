@@ -1,5 +1,18 @@
 import * as ts from 'typescript';
-import { ASTNode, ChunkType, Dependency, ExportInfo, Parameter, ParserAdapter, Range } from '../types';
+import {
+  ASTNode,
+  ChunkType,
+  Dependency,
+  ExportInfo,
+  Parameter,
+  ParserAdapter,
+  Range,
+} from '../types';
+import {
+  createASTNodeFromTS,
+  getTypeScriptNode,
+  getTypeScriptSourceFile,
+} from '../utils/type-guards';
 
 /**
  * TypeScript Compiler API adapter
@@ -17,7 +30,7 @@ export class TypeScriptAdapter implements ParserAdapter {
       true,
       filePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
     );
-    return this.sourceFile as unknown as ASTNode;
+    return createASTNodeFromTS(this.sourceFile);
   }
 
   getRoot(node: ASTNode): ASTNode {
@@ -25,12 +38,16 @@ export class TypeScriptAdapter implements ParserAdapter {
   }
 
   getTopLevelDeclarations(node: ASTNode): ASTNode[] {
-    const sourceFile = node as unknown as ts.SourceFile;
-    return Array.from(sourceFile.statements) as unknown as ASTNode[];
+    const sourceFile = getTypeScriptSourceFile(node);
+    if (!sourceFile) {
+      return [];
+    }
+    return sourceFile.statements.map((stmt) => createASTNodeFromTS(stmt));
   }
 
   isFunction(node: ASTNode): boolean {
-    const tsNode = node as unknown as ts.Node;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode) return false;
     return (
       ts.isFunctionDeclaration(tsNode) ||
       ts.isFunctionExpression(tsNode) ||
@@ -40,31 +57,43 @@ export class TypeScriptAdapter implements ParserAdapter {
   }
 
   isClass(node: ASTNode): boolean {
-    return ts.isClassDeclaration(node as unknown as ts.Node);
+    const tsNode = getTypeScriptNode(node);
+    return tsNode !== null && ts.isClassDeclaration(tsNode);
   }
 
   isInterface(node: ASTNode): boolean {
-    return ts.isInterfaceDeclaration(node as unknown as ts.Node);
+    const tsNode = getTypeScriptNode(node);
+    return tsNode !== null && ts.isInterfaceDeclaration(tsNode);
   }
 
   isEnum(node: ASTNode): boolean {
-    return ts.isEnumDeclaration(node as unknown as ts.Node);
+    const tsNode = getTypeScriptNode(node);
+    return tsNode !== null && ts.isEnumDeclaration(tsNode);
   }
 
   isTypeAlias(node: ASTNode): boolean {
-    return ts.isTypeAliasDeclaration(node as unknown as ts.Node);
+    const tsNode = getTypeScriptNode(node);
+    return tsNode !== null && ts.isTypeAliasDeclaration(tsNode);
   }
 
   isNamespace(node: ASTNode): boolean {
-    return ts.isModuleDeclaration(node as unknown as ts.Node) && (node as unknown as ts.ModuleDeclaration).name !== undefined;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode) return false;
+    const moduleNode = tsNode as ts.ModuleDeclaration;
+    return ts.isModuleDeclaration(tsNode) && moduleNode.name !== undefined;
   }
 
   getNodeName(node: ASTNode): string | undefined {
-    const tsNode = node as unknown as ts.Node;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode) return node.name;
 
-    if (ts.isFunctionDeclaration(tsNode) || ts.isClassDeclaration(tsNode) ||
-        ts.isInterfaceDeclaration(tsNode) || ts.isEnumDeclaration(tsNode) ||
-        ts.isTypeAliasDeclaration(tsNode)) {
+    if (
+      ts.isFunctionDeclaration(tsNode) ||
+      ts.isClassDeclaration(tsNode) ||
+      ts.isInterfaceDeclaration(tsNode) ||
+      ts.isEnumDeclaration(tsNode) ||
+      ts.isTypeAliasDeclaration(tsNode)
+    ) {
       return tsNode.name?.getText(this.sourceFile!) || undefined;
     }
 
@@ -80,8 +109,8 @@ export class TypeScriptAdapter implements ParserAdapter {
   }
 
   getNodeRange(node: ASTNode): Range | undefined {
-    const tsNode = node as unknown as ts.Node;
-    if (!this.sourceFile) return undefined;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode || !this.sourceFile) return node.range;
 
     try {
       // Get start and end positions
@@ -108,13 +137,15 @@ export class TypeScriptAdapter implements ParserAdapter {
   }
 
   getChildren(node: ASTNode): ASTNode[] {
-    const tsNode = node as unknown as ts.Node;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode) return [];
+
     const children: ASTNode[] = [];
 
     // For class declarations, get members from the class body
     if (ts.isClassDeclaration(tsNode) && tsNode.members) {
       for (const member of tsNode.members) {
-        children.push(member as unknown as ASTNode);
+        children.push(createASTNodeFromTS(member));
       }
       return children;
     }
@@ -122,26 +153,27 @@ export class TypeScriptAdapter implements ParserAdapter {
     // For interface declarations, get members
     if (ts.isInterfaceDeclaration(tsNode) && tsNode.members) {
       for (const member of tsNode.members) {
-        children.push(member as unknown as ASTNode);
+        children.push(createASTNodeFromTS(member));
       }
       return children;
     }
 
     // For other nodes, get all children
     ts.forEachChild(tsNode, (child: ts.Node) => {
-      children.push(child as unknown as ASTNode);
+      children.push(createASTNodeFromTS(child));
     });
 
     return children;
   }
 
   isExported(node: ASTNode): boolean {
-    const tsNode = node as unknown as ts.Node;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode) return false;
 
     // Check for export modifier
     if (ts.canHaveModifiers(tsNode)) {
       const modifiers = ts.getModifiers(tsNode);
-      return modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
+      return modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
     }
 
     // Check if parent is export declaration
@@ -155,10 +187,11 @@ export class TypeScriptAdapter implements ParserAdapter {
   }
 
   getExportName(node: ASTNode): string | undefined {
-    const tsNode = node as unknown as ts.Node;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode || !tsNode.parent) return undefined;
 
-    if (ts.isExportDeclaration(tsNode.parent as unknown as ts.Node)) {
-      const exportDecl = tsNode.parent as unknown as ts.ExportDeclaration;
+    if (ts.isExportDeclaration(tsNode.parent)) {
+      const exportDecl = tsNode.parent;
       if (exportDecl.exportClause && ts.isNamedExports(exportDecl.exportClause)) {
         // Find the specific export
         for (const element of exportDecl.exportClause.elements) {
@@ -175,7 +208,8 @@ export class TypeScriptAdapter implements ParserAdapter {
 
   getImports(node: ASTNode): Dependency[] {
     const imports: Dependency[] = [];
-    const sourceFile = node as unknown as ts.SourceFile;
+    const sourceFile = getTypeScriptSourceFile(node);
+    if (!sourceFile) return imports;
 
     const visit = (n: ts.Node) => {
       // Import declarations
@@ -242,7 +276,8 @@ export class TypeScriptAdapter implements ParserAdapter {
 
   getExports(node: ASTNode): ExportInfo[] {
     const exports: ExportInfo[] = [];
-    const sourceFile = node as unknown as ts.SourceFile;
+    const sourceFile = getTypeScriptSourceFile(node);
+    if (!sourceFile) return exports;
 
     const visit = (n: ts.Node) => {
       // Export declarations
@@ -272,7 +307,7 @@ export class TypeScriptAdapter implements ParserAdapter {
       }
 
       // Direct exports (export function, export class, etc.)
-      const astNode = n as unknown as ASTNode;
+      const astNode = createASTNodeFromTS(n);
       if (this.isExported(astNode)) {
         const name = this.getNodeName(astNode);
         if (name) {
@@ -298,13 +333,13 @@ export class TypeScriptAdapter implements ParserAdapter {
   }
 
   getDecorators(node: ASTNode): string[] {
-    const tsNode = node as unknown as ts.Node;
-    if (!ts.canHaveDecorators(tsNode)) return [];
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode || !this.sourceFile || !ts.canHaveDecorators(tsNode)) return [];
 
     const decorators = ts.getDecorators(tsNode);
     if (!decorators) return [];
 
-    return decorators.map(d => {
+    return decorators.map((d) => {
       if (ts.isCallExpression(d.expression)) {
         return d.expression.expression.getText(this.sourceFile!);
       }
@@ -313,7 +348,8 @@ export class TypeScriptAdapter implements ParserAdapter {
   }
 
   getTypeParameters(node: ASTNode): string[] {
-    const tsNode = node as unknown as ts.Node;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode || !this.sourceFile) return [];
 
     let typeParams: ts.NodeArray<ts.TypeParameterDeclaration> | undefined;
 
@@ -327,11 +363,12 @@ export class TypeScriptAdapter implements ParserAdapter {
 
     if (!typeParams) return [];
 
-    return typeParams.map(tp => tp.name.getText(this.sourceFile!));
+    return typeParams.map((tp) => tp.name.getText(this.sourceFile!));
   }
 
   getParameters(node: ASTNode): Parameter[] {
-    const tsNode = node as unknown as ts.Node;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode || !this.sourceFile) return [];
 
     let params: ts.NodeArray<ts.ParameterDeclaration> | undefined;
 
@@ -343,7 +380,7 @@ export class TypeScriptAdapter implements ParserAdapter {
 
     if (!params) return [];
 
-    return params.map(param => {
+    return params.map((param) => {
       const name = param.name.getText(this.sourceFile!);
       const type = param.type?.getText(this.sourceFile!);
       const optional = param.questionToken !== undefined;
@@ -359,10 +396,13 @@ export class TypeScriptAdapter implements ParserAdapter {
   }
 
   getReturnType(node: ASTNode): string | undefined {
-    const tsNode = node as unknown as ts.Node;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode || !this.sourceFile) return undefined;
 
     if (ts.isFunctionDeclaration(tsNode) || ts.isMethodDeclaration(tsNode)) {
-      return (tsNode as ts.FunctionDeclaration | ts.MethodDeclaration).type?.getText(this.sourceFile!);
+      return (tsNode as ts.FunctionDeclaration | ts.MethodDeclaration).type?.getText(
+        this.sourceFile!
+      );
     }
 
     if (ts.isFunctionExpression(tsNode) || ts.isArrowFunction(tsNode)) {
@@ -373,11 +413,13 @@ export class TypeScriptAdapter implements ParserAdapter {
   }
 
   getJSDoc(node: ASTNode): string | undefined {
-    const tsNode = node as unknown as ts.Node;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode || !this.sourceFile) return undefined;
+
     const jsDocTags = ts.getJSDocTags(tsNode);
 
     if (jsDocTags.length > 0) {
-      return jsDocTags.map(tag => tag.getText(this.sourceFile!)).join('\n');
+      return jsDocTags.map((tag) => tag.getText(this.sourceFile!)).join('\n');
     }
 
     // Also check for JSDoc comments
@@ -397,7 +439,26 @@ export class TypeScriptAdapter implements ParserAdapter {
   }
 
   extractCode(node: ASTNode, sourceCode: string): string {
-    const tsNode = node as unknown as ts.Node;
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode) {
+      // Fallback to range-based extraction if no TypeScript node
+      if (node.range) {
+        const lines = sourceCode.split('\n');
+        const startLine = Math.max(0, node.range.start.line - 1);
+        const endLine = Math.min(lines.length - 1, node.range.end.line - 1);
+        if (startLine === endLine) {
+          return lines[startLine]?.substring(node.range.start.column, node.range.end.column) || '';
+        }
+        const result: string[] = [];
+        result.push(lines[startLine]?.substring(node.range.start.column) || '');
+        for (let i = startLine + 1; i < endLine; i++) {
+          result.push(lines[i] || '');
+        }
+        result.push(lines[endLine]?.substring(0, node.range.end.column) || '');
+        return result.join('\n');
+      }
+      return '';
+    }
     return sourceCode.substring(tsNode.getStart(), tsNode.getEnd());
   }
 }

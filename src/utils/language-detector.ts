@@ -14,6 +14,7 @@ export function detectLanguage(filePath: string): SupportedLanguage {
     '.jsx': 'javascript',
     '.mjs': 'javascript',
     '.cjs': 'javascript',
+    '.vue': 'vue',
     '.py': 'python',
     '.java': 'java',
     '.go': 'go',
@@ -37,9 +38,25 @@ export function detectLanguage(filePath: string): SupportedLanguage {
 export function isSupportedFile(filePath: string): boolean {
   const ext = path.extname(filePath).toLowerCase();
   const supportedExtensions = [
-    '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-    '.py', '.java', '.go', '.rs', '.cpp', '.cc', '.cxx', '.c', '.h', '.hpp',
-    '.rb', '.php',
+    '.ts',
+    '.tsx',
+    '.js',
+    '.jsx',
+    '.mjs',
+    '.cjs',
+    '.vue',
+    '.py',
+    '.java',
+    '.go',
+    '.rs',
+    '.cpp',
+    '.cc',
+    '.cxx',
+    '.c',
+    '.h',
+    '.hpp',
+    '.rb',
+    '.php',
   ];
 
   return supportedExtensions.includes(ext);
@@ -49,7 +66,7 @@ export function isSupportedFile(filePath: string): boolean {
  * Get parser type for a language
  */
 export function getParserTypeForLanguage(language: SupportedLanguage): 'typescript' | 'treesitter' {
-  if (language === 'typescript' || language === 'javascript') {
+  if (language === 'typescript' || language === 'javascript' || language === 'vue') {
     return 'typescript';
   }
   return 'treesitter';
