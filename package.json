@@ -30,7 +30,7 @@
     "format:fix": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
     "benchmark": "ts-node src/benchmark/index.ts",
     "api": "ts-node src/api/server.ts",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test -- --runInBand"
   },
   "keywords": [
     "ast",
