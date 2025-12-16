@@ -944,12 +944,19 @@ export namespace Utils {
         console.log(`\n=== Scenario: ${scenario.name} ===`);
         console.log('Expected chunks:', scenario.expectedChunks.length);
         console.log('Actual chunks:', chunks.length);
-        console.log('Actual chunks:', JSON.stringify(chunks.map(c => ({
-          type: c.type,
-          name: c.name,
-          qualifiedName: c.qualifiedName,
-          exported: c.exported
-        })), null, 2));
+        console.log(
+          'Actual chunks:',
+          JSON.stringify(
+            chunks.map((c) => ({
+              type: c.type,
+              name: c.name,
+              qualifiedName: c.qualifiedName,
+              exported: c.exported,
+            })),
+            null,
+            2
+          )
+        );
       }
 
       // Check total count if specified
@@ -965,11 +972,14 @@ export namespace Utils {
 
         if (!actual) {
           console.error(`\nMissing expected chunk:`, expected);
-          console.error('Available chunks:', chunks.map(c => ({
-            type: c.type,
-            name: c.name,
-            qualifiedName: c.qualifiedName
-          })));
+          console.error(
+            'Available chunks:',
+            chunks.map((c) => ({
+              type: c.type,
+              name: c.name,
+              qualifiedName: c.qualifiedName,
+            }))
+          );
         }
 
         expect(actual).toBeDefined();
@@ -981,8 +991,8 @@ export namespace Utils {
 
       // Check types if specified
       if (scenario.expectedTypes) {
-        const actualTypes = chunks.map(c => c.type);
-        scenario.expectedTypes.forEach(expectedType => {
+        const actualTypes = chunks.map((c) => c.type);
+        scenario.expectedTypes.forEach((expectedType) => {
           expect(actualTypes).toContain(expectedType);
         });
       }
@@ -1000,7 +1010,7 @@ export namespace Utils {
       if (expected.exported !== undefined && chunk.exported !== expected.exported) return false;
       if (expected.parentName && chunk.parentId) {
         // Check if parent matches (simplified check)
-        const parentChunk = chunks.find(c => c.id === chunk.parentId);
+        const parentChunk = chunks.find((c) => c.id === chunk.parentId);
         if (parentChunk?.name !== expected.parentName) return false;
       }
       return true;

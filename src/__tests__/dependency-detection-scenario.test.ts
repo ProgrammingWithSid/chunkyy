@@ -62,7 +62,10 @@ function testData(): void {
         console.log(`✅ Found dependency: test`);
       } else {
         console.log(`⚠️  Dependency 'test' not detected in testData's dependencies`);
-        console.log(`   Available dependencies:`, testDataChunk.dependencies.map(d => d.name));
+        console.log(
+          `   Available dependencies:`,
+          testDataChunk.dependencies.map((d) => d.name)
+        );
       }
     }
   });
@@ -168,7 +171,9 @@ function testData(): void {
     if (testChunk) {
       console.log(`✅ test chunk extracted`);
       console.log(`   Hash: ${testChunk.hash}`);
-      console.log(`   Would be reviewed: ${testDataChunk?.dependencies.some(d => d.name === 'test') ? 'YES (dependency)' : 'NO (not changed, no dependency link)'}`);
+      console.log(
+        `   Would be reviewed: ${testDataChunk?.dependencies.some((d) => d.name === 'test') ? 'YES (dependency)' : 'NO (not changed, no dependency link)'}`
+      );
     }
 
     // Expected output explanation
@@ -176,6 +181,6 @@ function testData(): void {
     console.log('1. testData chunk should be extracted and marked as changed');
     console.log('2. test chunk should be extracted');
     console.log('3. If dependency detection works: test should be included in review (dependency)');
-    console.log('4. If dependency detection doesn\'t work: only testData would be reviewed');
+    console.log("4. If dependency detection doesn't work: only testData would be reviewed");
   });
 });

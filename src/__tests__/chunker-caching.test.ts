@@ -92,7 +92,7 @@ describe('Chunker with Caching', () => {
       shortTTLCache.chunkCode(code, 'test.ts');
 
       // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       shortTTLCache.chunkCode(code, 'test.ts');
       const stats = shortTTLCache.getCacheStats();

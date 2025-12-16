@@ -52,7 +52,8 @@ export class VariableExtractor extends BaseExtractor {
       if (!name) continue;
 
       // Only extract if it's an arrow function or exported
-      const isArrowFunction = declaration.initializer && ts.isArrowFunction(declaration.initializer);
+      const isArrowFunction =
+        declaration.initializer && ts.isArrowFunction(declaration.initializer);
       const isExported = this.isExported(tsNode);
 
       if (isArrowFunction || isExported) {
@@ -80,7 +81,8 @@ export class VariableExtractor extends BaseExtractor {
           }
 
           // Mark as async if needed
-          chunk.async = (arrowFunc.modifiers?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword)) ?? false;
+          chunk.async =
+            arrowFunc.modifiers?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword) ?? false;
 
           // Extract parameters and return type from arrow function
           if (arrowFunc.parameters) {

@@ -96,7 +96,7 @@ describe('ParserPool', () => {
 
       // Verify pool has adapters (may be less than 3 if some were reused)
       const statsBefore = pool.getStats();
-      const poolSizeBefore = statsBefore.poolSizes.find(p => p.key === 'typescript')?.size || 0;
+      const poolSizeBefore = statsBefore.poolSizes.find((p) => p.key === 'typescript')?.size || 0;
       expect(poolSizeBefore).toBeGreaterThan(0);
       expect(poolSizeBefore).toBeLessThanOrEqual(3);
 
@@ -113,7 +113,7 @@ describe('ParserPool', () => {
         }
         if (shouldContinue) {
           const currentStats = pool.getStats();
-          const currentSize = currentStats.poolSizes.find(p => p.key === 'typescript')?.size || 0;
+          const currentSize = currentStats.poolSizes.find((p) => p.key === 'typescript')?.size || 0;
           if (currentSize === 0) {
             shouldContinue = false;
           }
@@ -121,10 +121,10 @@ describe('ParserPool', () => {
       }
 
       // Release all retrieved adapters back - pool should fill to max
-      retrieved.forEach(adapter => pool.releaseAdapter('typescript', adapter));
+      retrieved.forEach((adapter) => pool.releaseAdapter('typescript', adapter));
 
       const statsAfter = pool.getStats();
-      const poolSizeAfter = statsAfter.poolSizes.find(p => p.key === 'typescript')?.size || 0;
+      const poolSizeAfter = statsAfter.poolSizes.find((p) => p.key === 'typescript')?.size || 0;
 
       // Pool size should be at most max (3)
       expect(poolSizeAfter).toBeLessThanOrEqual(3);
@@ -133,7 +133,8 @@ describe('ParserPool', () => {
       const extraAdapter = pool.getAdapter('typescript');
       pool.releaseAdapter('typescript', extraAdapter);
       const statsAfterExtra = pool.getStats();
-      const sizeAfterExtra = statsAfterExtra.poolSizes.find(p => p.key === 'typescript')?.size || 0;
+      const sizeAfterExtra =
+        statsAfterExtra.poolSizes.find((p) => p.key === 'typescript')?.size || 0;
 
       // Size should not exceed max
       expect(sizeAfterExtra).toBeLessThanOrEqual(3);
@@ -183,7 +184,7 @@ describe('ParserPool', () => {
 
       const stats = pool.getStats();
       expect(stats.poolSizes.length).toBeGreaterThan(0);
-      expect(stats.poolSizes.every(p => p.size >= 0)).toBe(true);
+      expect(stats.poolSizes.every((p) => p.size >= 0)).toBe(true);
     });
   });
 

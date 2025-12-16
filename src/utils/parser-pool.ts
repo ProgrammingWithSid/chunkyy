@@ -68,9 +68,10 @@ export class ParserPool {
   getStats() {
     return {
       ...this.stats,
-      hitRate: this.stats.created + this.stats.reused > 0
-        ? this.stats.reused / (this.stats.created + this.stats.reused)
-        : 0,
+      hitRate:
+        this.stats.created + this.stats.reused > 0
+          ? this.stats.reused / (this.stats.created + this.stats.reused)
+          : 0,
       poolSizes: Array.from(this.pools.entries()).map(([key, pool]) => ({
         key,
         size: pool.length,

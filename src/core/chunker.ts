@@ -2,30 +2,30 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as pathModule from 'path';
 import {
-    BaseExtractor,
-    ClassExtractor,
-    EnumExtractor,
-    FunctionExtractor,
-    InterfaceExtractor,
-    NamespaceExtractor,
-    TypeAliasExtractor,
-    VariableExtractor,
-    VueOptionsExtractor,
+  BaseExtractor,
+  ClassExtractor,
+  EnumExtractor,
+  FunctionExtractor,
+  InterfaceExtractor,
+  NamespaceExtractor,
+  TypeAliasExtractor,
+  VariableExtractor,
+  VueOptionsExtractor,
 } from '../extractors';
 import { createParser } from '../parsers';
 import {
-    Chunk,
-    ChunkingOptions,
-    ChunkingResult,
-    ChunkType,
-    CodeExtractionResult,
-    Dependency,
-    DependencyGraph,
-    ExportInfo,
-    FileRangeRequest,
-    ImportExportMap,
-    ImportInfo,
-    ParserAdapter,
+  Chunk,
+  ChunkingOptions,
+  ChunkingResult,
+  ChunkType,
+  CodeExtractionResult,
+  Dependency,
+  DependencyGraph,
+  ExportInfo,
+  FileRangeRequest,
+  ImportExportMap,
+  ImportInfo,
+  ParserAdapter,
 } from '../types';
 import { ASTCache } from '../utils/ast-cache';
 import { ParserPool } from '../utils/parser-pool';

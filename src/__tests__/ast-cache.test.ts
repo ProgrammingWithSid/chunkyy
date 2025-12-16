@@ -36,7 +36,7 @@ describe('ASTCache', () => {
       shortTTLCache.set('test.ts', 'hash1', mockAST);
 
       // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       const retrieved = shortTTLCache.get('test.ts', 'hash1');
       expect(retrieved).toBeNull();
@@ -96,26 +96,29 @@ describe('ASTCache', () => {
 
       smallCache.set('file1.ts', 'hash1', ast1);
       // Small delay to ensure different timestamps
-      const delay = () => new Promise(resolve => setTimeout(resolve, 10));
+      const delay = () => new Promise((resolve) => setTimeout(resolve, 10));
 
-      return delay().then(() => {
-        smallCache.set('file2.ts', 'hash2', ast2);
-        return delay();
-      }).then(() => {
-        smallCache.set('file3.ts', 'hash3', ast3);
-        return delay();
-      }).then(() => {
-        // Add one more - should evict oldest (file1.ts)
-        smallCache.set('file4.ts', 'hash4', ast4);
+      return delay()
+        .then(() => {
+          smallCache.set('file2.ts', 'hash2', ast2);
+          return delay();
+        })
+        .then(() => {
+          smallCache.set('file3.ts', 'hash3', ast3);
+          return delay();
+        })
+        .then(() => {
+          // Add one more - should evict oldest (file1.ts)
+          smallCache.set('file4.ts', 'hash4', ast4);
 
-        const stats = smallCache.getStats();
-        expect(stats.size).toBe(3);
-        expect(stats.evictions).toBeGreaterThan(0);
-        // file1 should be evicted (oldest)
-        expect(smallCache.get('file1.ts', 'hash1')).toBeNull();
-        // file4 should be present (newest)
-        expect(smallCache.get('file4.ts', 'hash4')).toBeDefined();
-      });
+          const stats = smallCache.getStats();
+          expect(stats.size).toBe(3);
+          expect(stats.evictions).toBeGreaterThan(0);
+          // file1 should be evicted (oldest)
+          expect(smallCache.get('file1.ts', 'hash1')).toBeNull();
+          // file4 should be present (newest)
+          expect(smallCache.get('file4.ts', 'hash4')).toBeDefined();
+        });
     });
 
     it('should evict oldest entry (not LRU)', () => {
@@ -127,23 +130,25 @@ describe('ASTCache', () => {
 
       smallCache.set('file1.ts', 'hash1', ast1);
 
-      return new Promise(resolve => setTimeout(resolve, 10)).then(() => {
-        smallCache.set('file2.ts', 'hash2', ast2);
+      return new Promise((resolve) => setTimeout(resolve, 10))
+        .then(() => {
+          smallCache.set('file2.ts', 'hash2', ast2);
 
-        // Access file1 - but eviction is based on timestamp, not access
-        smallCache.get('file1.ts', 'hash1');
+          // Access file1 - but eviction is based on timestamp, not access
+          smallCache.get('file1.ts', 'hash1');
 
-        return new Promise(resolve => setTimeout(resolve, 10));
-      }).then(() => {
-        // Add file3 - should evict oldest by timestamp (file1)
-        smallCache.set('file3.ts', 'hash3', ast3);
+          return new Promise((resolve) => setTimeout(resolve, 10));
+        })
+        .then(() => {
+          // Add file3 - should evict oldest by timestamp (file1)
+          smallCache.set('file3.ts', 'hash3', ast3);
 
-        // file1 should be evicted (oldest timestamp)
-        expect(smallCache.get('file1.ts', 'hash1')).toBeNull();
-        // file2 and file3 should be present
-        expect(smallCache.get('file2.ts', 'hash2')).toBeDefined();
-        expect(smallCache.get('file3.ts', 'hash3')).toBeDefined();
-      });
+          // file1 should be evicted (oldest timestamp)
+          expect(smallCache.get('file1.ts', 'hash1')).toBeNull();
+          // file2 and file3 should be present
+          expect(smallCache.get('file2.ts', 'hash2')).toBeDefined();
+          expect(smallCache.get('file3.ts', 'hash3')).toBeDefined();
+        });
     });
   });
 

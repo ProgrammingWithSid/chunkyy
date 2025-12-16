@@ -22,10 +22,7 @@ export class EnhancedDependencyResolver {
   /**
    * Resolve dependency with enhanced strategies
    */
-  async resolveDependency(
-    dep: Dependency,
-    fromFilePath: string
-  ): Promise<string[]> {
+  async resolveDependency(dep: Dependency, fromFilePath: string): Promise<string[]> {
     const resolvedPaths: string[] = [];
 
     // Strategy 1: Resolve TypeScript path aliases
@@ -46,10 +43,7 @@ export class EnhancedDependencyResolver {
 
     // Strategy 3: Resolve barrel exports
     if (resolvedPaths.length > 0) {
-      const barrelResolved = await this.resolveBarrelExports(
-        resolvedPaths[0],
-        dep.name
-      );
+      const barrelResolved = await this.resolveBarrelExports(resolvedPaths[0], dep.name);
       if (barrelResolved.length > 0) {
         return barrelResolved;
       }
@@ -92,10 +86,7 @@ export class EnhancedDependencyResolver {
   /**
    * Resolve relative import path
    */
-  private resolveRelativePath(
-    importPath: string,
-    fromFilePath: string
-  ): string | null {
+  private resolveRelativePath(importPath: string, fromFilePath: string): string | null {
     const dir = path.dirname(path.resolve(this.rootDir, fromFilePath));
     const resolved = path.resolve(dir, importPath);
 
@@ -122,9 +113,7 @@ export class EnhancedDependencyResolver {
   /**
    * Resolve barrel exports (index.ts re-exports)
    */
-  private async resolveBarrelExports(
-    filePath: string
-  ): Promise<string[]> {
+  private async resolveBarrelExports(filePath: string): Promise<string[]> {
     if (!this.isBarrelFile(filePath)) {
       return [];
     }
@@ -134,10 +123,7 @@ export class EnhancedDependencyResolver {
       const content = fs.readFileSync(fullPath, 'utf-8');
 
       // Simple regex-based extraction (could be enhanced with AST parsing)
-      const reExportPattern = new RegExp(
-        `export\\s+.*?from\\s+['"](.+?)['"]`,
-        'g'
-      );
+      const reExportPattern = new RegExp(`export\\s+.*?from\\s+['"](.+?)['"]`, 'g');
       const matches = Array.from(content.matchAll(reExportPattern));
 
       const resolvedPaths: string[] = [];
