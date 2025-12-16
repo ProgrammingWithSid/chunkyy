@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 import { ASTNode, Chunk, ChunkType } from '../types';
-import { BaseExtractor } from './base-extractor';
 import { getTypeScriptNode } from '../utils/type-guards';
+import { BaseExtractor } from './base-extractor';
 
 /**
  * Extracts function declarations and expressions
@@ -11,15 +11,31 @@ export class FunctionExtractor extends BaseExtractor {
     // Don't handle method declarations - those are handled by MethodExtractor
     const tsNode = getTypeScriptNode(node);
     if (!tsNode) return false;
-    if (ts.isMethodDeclaration(tsNode)) {
+    if (
+      ts.isMethodDeclaration(tsNode) ||
+      ts.isConstructorDeclaration(tsNode) ||
+      ts.isGetAccessorDeclaration(tsNode) ||
+      ts.isSetAccessorDeclaration(tsNode)
+    ) {
       return false;
     }
 
-    return (
-      this.adapter.isFunction(node) &&
-      // Only handle top-level functions or arrow functions assigned to variables
-      (this.isTopLevelFunction(node) || this.isArrowFunctionAssignment(node))
-    );
+    // Don't handle variable statements - those are handled by VariableExtractor
+    if (ts.isVariableStatement(tsNode)) {
+      return false;
+    }
+
+    // Don't handle arrow functions in variable declarations - those are handled by VariableExtractor
+    // unless we're extracting nested (parentQualifiedName is set)
+    if (ts.isArrowFunction(tsNode) && tsNode.parent && ts.isVariableDeclaration(tsNode.parent)) {
+      // Only handle if we're extracting nested (has parentQualifiedName in extract call)
+      // This is a bit of a hack - we check parent in canHandle
+      // In practice, VariableExtractor handles top-level arrow functions
+      return false;
+    }
+
+    // Handle functions (including nested ones when called from extractNested)
+    return this.adapter.isFunction(node);
   }
 
   getChunkType(): ChunkType {
@@ -55,7 +71,13 @@ export class FunctionExtractor extends BaseExtractor {
     chunk.async = nodeText.includes('async');
     chunk.generator = nodeText.includes('function*') || nodeText.includes('*');
 
-    return [chunk];
+    // Extract nested functions
+    const nested = this.extractNested(node, sourceCode, filePath, qualifiedName, [this]);
+
+    // Update chunk with children
+    chunk.childrenIds = nested.map((c) => c.id);
+
+    return [chunk, ...nested];
   }
 
   private isTopLevelFunction(_node: ASTNode): boolean {

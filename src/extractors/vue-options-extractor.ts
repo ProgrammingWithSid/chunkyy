@@ -41,6 +41,23 @@ export class VueOptionsExtractor extends BaseExtractor {
     const tsNode = getTypeScriptNode(node);
     if (!tsNode) return false;
 
+    // Handle ExportAssignment (export default { ... })
+    if (ts.isExportAssignment(tsNode) && tsNode.expression) {
+      if (ts.isObjectLiteralExpression(tsNode.expression)) {
+        // Check if any property is a Vue option
+        for (const prop of tsNode.expression.properties) {
+          if (ts.isPropertyAssignment(prop) || ts.isMethodDeclaration(prop)) {
+            const name = ts.isPropertyAssignment(prop) ? prop.name : prop.name;
+            if (ts.isIdentifier(name)) {
+              if (VUE_OPTIONS_API_PROPERTIES.includes(name.text)) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Check if this is a property in a Vue Options API object
     // TypeScript parses object methods as MethodDeclaration, not PropertyAssignment
     if (ts.isMethodDeclaration(tsNode)) {
@@ -72,6 +89,22 @@ export class VueOptionsExtractor extends BaseExtractor {
     if (!tsNode) return [];
 
     let propName: string | undefined;
+
+    // Handle ExportAssignment (export default { methods: { ... }, computed: { ... } })
+    if (ts.isExportAssignment(tsNode) && tsNode.expression) {
+      if (ts.isObjectLiteralExpression(tsNode.expression)) {
+        const chunks: Chunk[] = [];
+        // Extract all Vue options from the export default object
+        for (const prop of tsNode.expression.properties) {
+          if (ts.isPropertyAssignment(prop) || ts.isMethodDeclaration(prop)) {
+            const propNode = createASTNodeFromTS(prop);
+            const extracted = this.extract(propNode, sourceCode, filePath);
+            chunks.push(...extracted);
+          }
+        }
+        return chunks;
+      }
+    }
 
     // Handle MethodDeclaration (data(), created(), etc.)
     if (ts.isMethodDeclaration(tsNode)) {

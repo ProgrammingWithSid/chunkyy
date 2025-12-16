@@ -1,5 +1,5 @@
 import { ASTNode, Chunk, ChunkType, ParserAdapter } from '../types';
-import { generateChunkId, generateChunkHash } from '../utils/hash';
+import { generateChunkHash, generateChunkId } from '../utils/hash';
 import { estimateTokenCount } from '../utils/token-count';
 
 /**
@@ -64,8 +64,18 @@ export abstract class BaseExtractor {
     );
 
     const chunkId = generateChunkId(filePath, qualifiedName, type);
+    // For parent ID, determine the parent type based on current chunk type
+    // Methods belong to classes, nested functions belong to functions, etc.
+    let parentType: ChunkType = type;
+    if (type === 'method') {
+      parentType = 'class'; // Methods belong to classes
+    } else if (type === 'function' && parentQualifiedName) {
+      // Nested functions - parent could be function or class
+      // For now, assume same type (function -> function)
+      parentType = 'function';
+    }
     const parentId = parentQualifiedName
-      ? generateChunkId(filePath, parentQualifiedName, 'class')
+      ? generateChunkId(filePath, parentQualifiedName, parentType)
       : undefined;
 
     const chunk: Chunk = {

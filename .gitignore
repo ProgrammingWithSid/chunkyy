@@ -18,3 +18,4 @@ GITHUB_SETUP.md
 MakeFile
 examples/
 docs/
+*.md

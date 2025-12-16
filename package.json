@@ -1,6 +1,6 @@
 {
   "name": "chunkyyy",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "AST-based semantic code chunking engine for TypeScript and JavaScript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

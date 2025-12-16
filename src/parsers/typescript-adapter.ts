@@ -97,8 +97,17 @@ export class TypeScriptAdapter implements ParserAdapter {
       return tsNode.name?.getText(this.sourceFile!) || undefined;
     }
 
-    if (ts.isMethodDeclaration(tsNode) || ts.isPropertyDeclaration(tsNode)) {
+    if (
+      ts.isMethodDeclaration(tsNode) ||
+      ts.isPropertyDeclaration(tsNode) ||
+      ts.isGetAccessorDeclaration(tsNode) ||
+      ts.isSetAccessorDeclaration(tsNode)
+    ) {
       return tsNode.name?.getText(this.sourceFile!) || undefined;
+    }
+
+    if (ts.isConstructorDeclaration(tsNode)) {
+      return 'constructor';
     }
 
     if (ts.isVariableDeclaration(tsNode)) {
@@ -158,6 +167,19 @@ export class TypeScriptAdapter implements ParserAdapter {
       return children;
     }
 
+    // For function declarations/expressions, get nested functions from body
+    if (ts.isFunctionDeclaration(tsNode) || ts.isFunctionExpression(tsNode)) {
+      const body = tsNode.body;
+      if (body && ts.isBlock(body)) {
+        for (const statement of body.statements) {
+          if (ts.isFunctionDeclaration(statement) || ts.isFunctionExpression(statement)) {
+            children.push(createASTNodeFromTS(statement));
+          }
+        }
+        return children; // Return early to avoid forEachChild
+      }
+    }
+
     // For other nodes, get all children
     ts.forEachChild(tsNode, (child: ts.Node) => {
       children.push(createASTNodeFromTS(child));
@@ -188,17 +210,37 @@ export class TypeScriptAdapter implements ParserAdapter {
 
   getExportName(node: ASTNode): string | undefined {
     const tsNode = getTypeScriptNode(node);
-    if (!tsNode || !tsNode.parent) return undefined;
+    if (!tsNode) return undefined;
 
-    if (ts.isExportDeclaration(tsNode.parent)) {
-      const exportDecl = tsNode.parent;
-      if (exportDecl.exportClause && ts.isNamedExports(exportDecl.exportClause)) {
-        // Find the specific export
-        for (const element of exportDecl.exportClause.elements) {
-          if (element.propertyName) {
-            return element.propertyName.getText(this.sourceFile!);
+    // Check for default keyword in modifiers (export default function/class)
+    if (ts.isFunctionDeclaration(tsNode) || ts.isClassDeclaration(tsNode)) {
+      const modifiers = ts.getModifiers(tsNode);
+      if (modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)) {
+        return 'default';
+      }
+    }
+
+    // Check parent for export assignment: export default ...
+    if (tsNode.parent) {
+      // Check for default export assignment: export default function/class
+      if (ts.isExportAssignment(tsNode.parent)) {
+        const exportAssign = tsNode.parent;
+        if (!exportAssign.isExportEquals) {
+          // This is "export default ..."
+          return 'default';
+        }
+      }
+
+      if (ts.isExportDeclaration(tsNode.parent)) {
+        const exportDecl = tsNode.parent;
+        if (exportDecl.exportClause && ts.isNamedExports(exportDecl.exportClause)) {
+          // Find the specific export
+          for (const element of exportDecl.exportClause.elements) {
+            if (element.propertyName) {
+              return element.propertyName.getText(this.sourceFile!);
+            }
+            return element.name.getText(this.sourceFile!);
           }
-          return element.name.getText(this.sourceFile!);
         }
       }
     }

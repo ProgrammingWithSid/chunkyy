@@ -177,6 +177,15 @@ export interface ChunkingOptions {
 
   /** Whether to include code content in chunks (default: false for memory efficiency) */
   includeContent?: boolean;
+
+  /** Maximum parser pool size (default: 5) */
+  parserPoolSize?: number;
+
+  /** AST cache TTL in milliseconds (default: 5 minutes) */
+  astCacheTTL?: number;
+
+  /** Maximum AST cache size (default: 1000) */
+  astCacheMaxSize?: number;
 }
 
 export interface ChunkingResult {

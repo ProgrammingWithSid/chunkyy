@@ -2,28 +2,33 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as pathModule from 'path';
 import {
-  BaseExtractor,
-  ClassExtractor,
-  EnumExtractor,
-  FunctionExtractor,
-  InterfaceExtractor,
-  VueOptionsExtractor,
+    BaseExtractor,
+    ClassExtractor,
+    EnumExtractor,
+    FunctionExtractor,
+    InterfaceExtractor,
+    NamespaceExtractor,
+    TypeAliasExtractor,
+    VariableExtractor,
+    VueOptionsExtractor,
 } from '../extractors';
 import { createParser } from '../parsers';
 import {
-  Chunk,
-  ChunkingOptions,
-  ChunkingResult,
-  ChunkType,
-  CodeExtractionResult,
-  Dependency,
-  DependencyGraph,
-  ExportInfo,
-  FileRangeRequest,
-  ImportExportMap,
-  ImportInfo,
-  ParserAdapter,
+    Chunk,
+    ChunkingOptions,
+    ChunkingResult,
+    ChunkType,
+    CodeExtractionResult,
+    Dependency,
+    DependencyGraph,
+    ExportInfo,
+    FileRangeRequest,
+    ImportExportMap,
+    ImportInfo,
+    ParserAdapter,
 } from '../types';
+import { ASTCache } from '../utils/ast-cache';
+import { ParserPool } from '../utils/parser-pool';
 import { estimateTokenCount } from '../utils/token-count';
 
 /**
@@ -32,6 +37,8 @@ import { estimateTokenCount } from '../utils/token-count';
 export class Chunker {
   private extractors: BaseExtractor[];
   public options: Required<ChunkingOptions>;
+  private parserPool: ParserPool;
+  private astCache: ASTCache;
 
   constructor(options: ChunkingOptions = {}) {
     this.options = {
@@ -53,25 +60,45 @@ export class Chunker {
         '**/yarn.lock',
       ],
       includeContent: options.includeContent ?? false, // Default to false for memory efficiency
+      parserPoolSize: options.parserPoolSize || 5,
+      astCacheTTL: options.astCacheTTL || 5 * 60 * 1000, // 5 minutes
+      astCacheMaxSize: options.astCacheMaxSize || 1000,
     };
+
+    // Initialize parser pool and AST cache
+    this.parserPool = new ParserPool(options.parserPoolSize || 5);
+    this.astCache = new ASTCache(
+      options.astCacheTTL || 5 * 60 * 1000, // 5 minutes default
+      options.astCacheMaxSize || 1000
+    );
 
     // Extractors will get adapter per-file
     // Create a temporary adapter to initialize extractors
     const tempAdapter = createParser(this.options.parser);
     this.extractors = [
+      new VueOptionsExtractor(tempAdapter, this.options.includeContent), // Handle Vue files first
       new ClassExtractor(tempAdapter, this.options.includeContent),
       new InterfaceExtractor(tempAdapter, this.options.includeContent),
       new EnumExtractor(tempAdapter, this.options.includeContent),
+      new TypeAliasExtractor(tempAdapter, this.options.includeContent),
+      new NamespaceExtractor(tempAdapter, this.options.includeContent),
+      new VariableExtractor(tempAdapter, this.options.includeContent), // Before FunctionExtractor to handle arrow functions
       new FunctionExtractor(tempAdapter, this.options.includeContent),
-      new VueOptionsExtractor(tempAdapter, this.options.includeContent),
     ];
   }
 
   /**
-   * Set adapter based on file type
+   * Set adapter based on file type (using parser pool)
    */
   private getAdapter(filePath: string): ParserAdapter {
-    return createParser(this.options.parser, filePath);
+    return this.parserPool.getAdapter(this.options.parser, filePath);
+  }
+
+  /**
+   * Release adapter back to pool
+   */
+  private releaseAdapter(filePath: string, adapter: ParserAdapter): void {
+    this.parserPool.releaseAdapter(this.options.parser, adapter, filePath);
   }
 
   /**
@@ -113,9 +140,19 @@ export class Chunker {
       // Update extractors with the adapter (including nested extractors)
       this.updateExtractorAdapters(adapter);
 
-      // For tree-sitter, we need async initialization, but for now use sync parse
-      // In production, you'd want to pre-initialize or use async chunkCode
-      const ast = adapter.parse(sourceCode, filePath);
+      // Check AST cache first
+      const contentHash = ASTCache.generateContentHash(sourceCode);
+      let ast = this.astCache.get(filePath, contentHash);
+
+      if (!ast) {
+        // Parse if not in cache
+        // For tree-sitter, we need async initialization, but for now use sync parse
+        // In production, you'd want to pre-initialize or use async chunkCode
+        ast = adapter.parse(sourceCode, filePath);
+        // Cache the AST
+        this.astCache.set(filePath, contentHash, ast);
+      }
+
       const root = adapter.getRoot(ast);
       const topLevelDecls = adapter.getTopLevelDeclarations(root);
 
@@ -140,12 +177,19 @@ export class Chunker {
               });
             });
             chunks.push(...extracted);
+            // Break after first matching extractor to avoid duplicate extraction
+            break;
           }
         }
       }
 
       // Post-process chunks
-      return this.postProcessChunks(chunks, sourceCode);
+      const result = this.postProcessChunks(chunks, sourceCode);
+
+      // Release adapter back to pool
+      this.releaseAdapter(filePath, adapter);
+
+      return result;
     } catch (error) {
       // Silently return empty array on error (library should not log by default)
       // Users can catch errors from chunkFile if needed
@@ -170,10 +214,20 @@ export class Chunker {
         chunk.tokenCount ||
         (chunk.content ? estimateTokenCount(chunk.content) : this.estimateSizeFromRange(chunk));
 
-      // Don't merge method chunks - they should remain separate
-      const isMethod = chunk.type === 'method';
+      // Don't merge certain chunk types - they should remain separate
+      // Methods, functions, classes, interfaces, enums, type aliases, namespaces, and Vue options should not be merged
+      const shouldNotMerge = [
+        'method',
+        'function',
+        'class',
+        'interface',
+        'enum',
+        'type-alias',
+        'namespace',
+        'top-level-declaration', // Used for Vue props, emits, etc.
+      ].includes(chunk.type);
 
-      if (size < this.options.minChunkSize && currentChunk && !isMethod) {
+      if (size < this.options.minChunkSize && currentChunk && !shouldNotMerge) {
         // Merge with previous chunk if both are small (but not methods)
         const currentSize =
           currentChunk.tokenCount ||
@@ -591,7 +645,19 @@ export class Chunker {
       resolveDependencies(chunk.id, new Set());
     }
 
-    // Step 5: Get all dependent chunks
+    // Step 5: For same-file dependencies, include all chunks from files with selected chunks
+    // This handles cases where functions call other functions in the same file
+    const sameFileChunkIds = new Set<string>();
+    for (const selectedChunk of selectedChunks) {
+      const fileChunks = fileChunkMap.get(selectedChunk.filePath) || [];
+      for (const chunk of fileChunks) {
+        if (!selectedChunkIds.has(chunk.id) && !dependentChunkIds.has(chunk.id)) {
+          sameFileChunkIds.add(chunk.id);
+        }
+      }
+    }
+
+    // Step 6: Get all dependent chunks
     const dependentChunks: Chunk[] = [];
     const allChunkMap = new Map<string, Chunk>();
     for (const chunk of allFileChunks) {
@@ -635,8 +701,17 @@ export class Chunker {
       }
     }
 
+    // Get same-file chunks
+    const sameFileChunks: Chunk[] = [];
+    for (const chunkId of sameFileChunkIds) {
+      const chunk = allChunkMap.get(chunkId);
+      if (chunk) {
+        sameFileChunks.push(chunk);
+      }
+    }
+
     // Step 6: Build complete code blocks
-    const allChunks = [...selectedChunks, ...dependentChunks];
+    const allChunks = [...selectedChunks, ...dependentChunks, ...sameFileChunks];
     const codeBlocks = new Map<string, string>();
 
     // Group chunks by file and build code blocks
@@ -702,5 +777,30 @@ export class Chunker {
   private chunkOverlapsRange(chunk: Chunk, range: { start: number; end: number }): boolean {
     // Check if chunk overlaps with range (inclusive boundaries)
     return !(chunk.endLine < range.start || chunk.startLine > range.end);
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats() {
+    return {
+      parserPool: this.parserPool.getStats(),
+      astCache: this.astCache.getStats(),
+    };
+  }
+
+  /**
+   * Clear all caches
+   */
+  clearCaches(): void {
+    this.parserPool.clear();
+    this.astCache.clear();
+  }
+
+  /**
+   * Invalidate AST cache for a specific file
+   */
+  invalidateASTCache(filePath: string): void {
+    this.astCache.invalidate(filePath);
   }
 }

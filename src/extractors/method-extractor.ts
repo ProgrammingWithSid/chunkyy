@@ -9,18 +9,23 @@ import { BaseExtractor } from './base-extractor';
 export class MethodExtractor extends BaseExtractor {
   canHandle(node: ASTNode): boolean {
     // Methods are functions that are children of classes
-    // Check specifically for method declarations
+    // Check specifically for method declarations, constructors, getters, and setters
     const tsNode = getTypeScriptNode(node);
     if (!tsNode) return false;
 
-    // Must be a method declaration specifically
-    if (!ts.isMethodDeclaration(tsNode)) {
-      return false;
+    // Handle method declarations, constructors, getters, and setters
+    if (
+      ts.isMethodDeclaration(tsNode) ||
+      ts.isConstructorDeclaration(tsNode) ||
+      ts.isGetAccessorDeclaration(tsNode) ||
+      ts.isSetAccessorDeclaration(tsNode)
+    ) {
+      // Verify it has a valid range
+      const range = this.adapter.getNodeRange(node);
+      return range !== undefined;
     }
 
-    // Verify it has a valid range
-    const range = this.adapter.getNodeRange(node);
-    return range !== undefined;
+    return false;
   }
 
   getChunkType(): ChunkType {
@@ -38,7 +43,19 @@ export class MethodExtractor extends BaseExtractor {
       return [];
     }
 
-    const name = this.adapter.getNodeName(node);
+    const tsNode = getTypeScriptNode(node);
+    if (!tsNode) return [];
+
+    // Get name - handle constructors specially
+    let name: string | undefined;
+    if (ts.isConstructorDeclaration(tsNode)) {
+      name = 'constructor';
+    } else if (ts.isGetAccessorDeclaration(tsNode) || ts.isSetAccessorDeclaration(tsNode)) {
+      name = this.adapter.getNodeName(node);
+    } else {
+      name = this.adapter.getNodeName(node);
+    }
+
     if (!name) {
       return [];
     }
