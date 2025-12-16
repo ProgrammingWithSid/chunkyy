@@ -2,11 +2,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Dependency } from '../types';
 
+interface TsConfig {
+  compilerOptions?: {
+    paths?: Record<string, string[]>;
+  };
+}
+
 /**
  * Enhanced dependency resolver with TypeScript path alias and barrel export support
  */
 export class EnhancedDependencyResolver {
-  private tsConfigCache: Map<string, any> = new Map();
+  private tsConfigCache: Map<string, TsConfig | null> = new Map();
   private rootDir: string;
 
   constructor(rootDir: string) {
@@ -117,8 +123,7 @@ export class EnhancedDependencyResolver {
    * Resolve barrel exports (index.ts re-exports)
    */
   private async resolveBarrelExports(
-    filePath: string,
-    exportName: string
+    filePath: string
   ): Promise<string[]> {
     if (!this.isBarrelFile(filePath)) {
       return [];
@@ -169,7 +174,7 @@ export class EnhancedDependencyResolver {
   /**
    * Load tsconfig.json
    */
-  private async loadTsConfig(): Promise<any> {
+  private async loadTsConfig(): Promise<TsConfig | null> {
     const cached = this.tsConfigCache.get(this.rootDir);
     if (cached) {
       return cached;

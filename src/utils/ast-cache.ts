@@ -2,11 +2,13 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { ASTNode } from '../types';
+
 /**
  * Cache entry for AST results
  */
 interface ASTCacheEntry {
-  ast: any;
+  ast: ASTNode;
   hash: string;
   timestamp: number;
 }
@@ -33,7 +35,7 @@ export class ASTCache {
   /**
    * Get cached AST for a file
    */
-  get(filePath: string, contentHash: string): any | null {
+  get(filePath: string, contentHash: string): ASTNode | null {
     const entry = this.cache.get(filePath);
     if (!entry) {
       this.stats.misses++;
@@ -61,7 +63,7 @@ export class ASTCache {
   /**
    * Set cached AST for a file
    */
-  set(filePath: string, contentHash: string, ast: any): void {
+  set(filePath: string, contentHash: string, ast: ASTNode): void {
     // Evict if cache is full
     if (this.cache.size >= this.maxSize) {
       this.evictOldest();

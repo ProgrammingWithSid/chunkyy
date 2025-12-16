@@ -1,5 +1,4 @@
 import { Chunker } from '../core/chunker';
-import { ASTCache } from '../utils/ast-cache';
 
 describe('Chunker with Caching', () => {
   let chunker: Chunker;

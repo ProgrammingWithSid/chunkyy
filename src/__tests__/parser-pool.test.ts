@@ -1,5 +1,5 @@
 import { ParserPool } from '../utils/parser-pool';
-import { ParserType } from '../types';
+import { ParserAdapter } from '../types';
 
 describe('ParserPool', () => {
   let pool: ParserPool;
@@ -24,7 +24,7 @@ describe('ParserPool', () => {
     });
 
     it('should reuse adapter from pool when available', () => {
-      const adapters: any[] = [];
+      const adapters: ParserAdapter[] = [];
 
       // Fill the pool
       for (let i = 0; i < 3; i++) {
@@ -68,7 +68,7 @@ describe('ParserPool', () => {
 
       // Release and reuse
       pool.releaseAdapter('typescript', adapter1);
-      const adapter2 = pool.getAdapter('typescript');
+      pool.getAdapter('typescript');
       const stats3 = pool.getStats();
       expect(stats3.created).toBe(1);
       expect(stats3.reused).toBe(1);
@@ -87,7 +87,7 @@ describe('ParserPool', () => {
 
     it('should not add adapter when pool is full', () => {
       // Fill pool to max by releasing adapters
-      const adapters: any[] = [];
+      const adapters: ParserAdapter[] = [];
       for (let i = 0; i < 3; i++) {
         const adapter = pool.getAdapter('typescript');
         adapters.push(adapter);
@@ -101,18 +101,23 @@ describe('ParserPool', () => {
       expect(poolSizeBefore).toBeLessThanOrEqual(3);
 
       // Get all adapters from pool until empty
-      const retrieved: any[] = [];
-      while (true) {
+      const retrieved: ParserAdapter[] = [];
+      let shouldContinue = true;
+      while (shouldContinue) {
         const adapter = pool.getAdapter('typescript');
         if (adapters.includes(adapter)) {
           retrieved.push(adapter);
         } else {
           // New adapter created, break
-          break;
+          shouldContinue = false;
         }
-        const currentStats = pool.getStats();
-        const currentSize = currentStats.poolSizes.find(p => p.key === 'typescript')?.size || 0;
-        if (currentSize === 0) break;
+        if (shouldContinue) {
+          const currentStats = pool.getStats();
+          const currentSize = currentStats.poolSizes.find(p => p.key === 'typescript')?.size || 0;
+          if (currentSize === 0) {
+            shouldContinue = false;
+          }
+        }
       }
 
       // Release all retrieved adapters back - pool should fill to max
@@ -126,9 +131,6 @@ describe('ParserPool', () => {
 
       // Try to release one more adapter when pool is full
       const extraAdapter = pool.getAdapter('typescript');
-      const statsBeforeExtra = pool.getStats();
-      const sizeBeforeExtra = statsBeforeExtra.poolSizes.find(p => p.key === 'typescript')?.size || 0;
-
       pool.releaseAdapter('typescript', extraAdapter);
       const statsAfterExtra = pool.getStats();
       const sizeAfterExtra = statsAfterExtra.poolSizes.find(p => p.key === 'typescript')?.size || 0;

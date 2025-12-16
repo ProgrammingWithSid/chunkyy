@@ -51,7 +51,6 @@ export class NamespaceExtractor extends BaseExtractor {
 
     // Extract nested declarations if namespace has a body
     if (tsNode.body && ts.isModuleBlock(tsNode.body)) {
-      const nested: Chunk[] = [];
       // Namespace can contain functions, classes, etc.
       // For now, just return the namespace chunk
       // Nested extraction can be added later if needed
