@@ -89,19 +89,24 @@ describe('ASTCache', () => {
       const smallCache = new ASTCache(1000, 3); // Max 3 entries
 
       // Fill cache
-      smallCache.set('file1.ts', 'hash1', { file: 1 });
+      const ast1 = { type: 'Program', body: ['file1'] };
+      const ast2 = { type: 'Program', body: ['file2'] };
+      const ast3 = { type: 'Program', body: ['file3'] };
+      const ast4 = { type: 'Program', body: ['file4'] };
+
+      smallCache.set('file1.ts', 'hash1', ast1);
       // Small delay to ensure different timestamps
       const delay = () => new Promise(resolve => setTimeout(resolve, 10));
 
       return delay().then(() => {
-        smallCache.set('file2.ts', 'hash2', { file: 2 });
+        smallCache.set('file2.ts', 'hash2', ast2);
         return delay();
       }).then(() => {
-        smallCache.set('file3.ts', 'hash3', { file: 3 });
+        smallCache.set('file3.ts', 'hash3', ast3);
         return delay();
       }).then(() => {
         // Add one more - should evict oldest (file1.ts)
-        smallCache.set('file4.ts', 'hash4', { file: 4 });
+        smallCache.set('file4.ts', 'hash4', ast4);
 
         const stats = smallCache.getStats();
         expect(stats.size).toBe(3);
@@ -116,10 +121,14 @@ describe('ASTCache', () => {
     it('should evict oldest entry (not LRU)', () => {
       const smallCache = new ASTCache(1000, 2);
 
-      smallCache.set('file1.ts', 'hash1', { file: 1 });
+      const ast1 = { type: 'Program', body: ['file1'] };
+      const ast2 = { type: 'Program', body: ['file2'] };
+      const ast3 = { type: 'Program', body: ['file3'] };
+
+      smallCache.set('file1.ts', 'hash1', ast1);
 
       return new Promise(resolve => setTimeout(resolve, 10)).then(() => {
-        smallCache.set('file2.ts', 'hash2', { file: 2 });
+        smallCache.set('file2.ts', 'hash2', ast2);
 
         // Access file1 - but eviction is based on timestamp, not access
         smallCache.get('file1.ts', 'hash1');
@@ -127,7 +136,7 @@ describe('ASTCache', () => {
         return new Promise(resolve => setTimeout(resolve, 10));
       }).then(() => {
         // Add file3 - should evict oldest by timestamp (file1)
-        smallCache.set('file3.ts', 'hash3', { file: 3 });
+        smallCache.set('file3.ts', 'hash3', ast3);
 
         // file1 should be evicted (oldest timestamp)
         expect(smallCache.get('file1.ts', 'hash1')).toBeNull();
