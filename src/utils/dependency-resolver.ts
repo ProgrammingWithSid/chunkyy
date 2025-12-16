@@ -43,7 +43,7 @@ export class EnhancedDependencyResolver {
 
     // Strategy 3: Resolve barrel exports
     if (resolvedPaths.length > 0) {
-      const barrelResolved = await this.resolveBarrelExports(resolvedPaths[0], dep.name);
+      const barrelResolved = await this.resolveBarrelExports(resolvedPaths[0]);
       if (barrelResolved.length > 0) {
         return barrelResolved;
       }
