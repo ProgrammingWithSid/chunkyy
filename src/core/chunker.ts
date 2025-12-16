@@ -2,30 +2,30 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as pathModule from 'path';
 import {
-  BaseExtractor,
-  ClassExtractor,
-  EnumExtractor,
-  FunctionExtractor,
-  InterfaceExtractor,
-  NamespaceExtractor,
-  TypeAliasExtractor,
-  VariableExtractor,
-  VueOptionsExtractor,
+    BaseExtractor,
+    ClassExtractor,
+    EnumExtractor,
+    FunctionExtractor,
+    InterfaceExtractor,
+    NamespaceExtractor,
+    TypeAliasExtractor,
+    VariableExtractor,
+    VueOptionsExtractor,
 } from '../extractors';
 import { createParser } from '../parsers';
 import {
-  Chunk,
-  ChunkingOptions,
-  ChunkingResult,
-  ChunkType,
-  CodeExtractionResult,
-  Dependency,
-  DependencyGraph,
-  ExportInfo,
-  FileRangeRequest,
-  ImportExportMap,
-  ImportInfo,
-  ParserAdapter,
+    Chunk,
+    ChunkingOptions,
+    ChunkingResult,
+    ChunkType,
+    CodeExtractionResult,
+    Dependency,
+    DependencyGraph,
+    ExportInfo,
+    FileRangeRequest,
+    ImportExportMap,
+    ImportInfo,
+    ParserAdapter,
 } from '../types';
 import { ASTCache } from '../utils/ast-cache';
 import { ParserPool } from '../utils/parser-pool';
@@ -146,8 +146,8 @@ export class Chunker {
 
       if (!ast) {
         // Parse if not in cache
-        // For tree-sitter, we need async initialization, but for now use sync parse
-        // In production, you'd want to pre-initialize or use async chunkCode
+      // For tree-sitter, we need async initialization, but for now use sync parse
+      // In production, you'd want to pre-initialize or use async chunkCode
         ast = adapter.parse(sourceCode, filePath);
         // Cache the AST
         this.astCache.set(filePath, contentHash, ast);
