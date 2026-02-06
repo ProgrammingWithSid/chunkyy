@@ -150,7 +150,15 @@ describe('Chunker with Caching', () => {
 
       // Second run should be faster (or at least not slower)
       // Note: This is a basic test - actual performance may vary
-      expect(time2).toBeLessThanOrEqual(time1 * 1.5); // Allow some variance
+      // If first run is very fast (0ms), second run might be 1ms due to timing precision
+      // In that case, we just verify that caching doesn't make it significantly slower
+      if (time1 === 0) {
+        // If first run was instant, second run should also be very fast (<= 2ms)
+        expect(time2).toBeLessThanOrEqual(2);
+      } else {
+        // Otherwise, second run should be faster or at most 1.5x slower (allowing variance)
+        expect(time2).toBeLessThanOrEqual(time1 * 1.5);
+      }
     });
   });
 
