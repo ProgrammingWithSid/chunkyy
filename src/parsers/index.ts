@@ -41,15 +41,6 @@ export function createParser(type: ParserType, filePath?: string): ParserAdapter
     case 'treesitter':
       // Default to TypeScript if no file path provided
       return new TreeSitterAdapter('typescript');
-    case 'swc':
-      // TODO: Implement SWC adapter
-      throw new Error('SWC adapter not yet implemented');
-    case 'babel':
-      // TODO: Implement Babel adapter
-      throw new Error('Babel adapter not yet implemented');
-    case 'esprima':
-      // TODO: Implement Esprima adapter
-      throw new Error('Esprima adapter not yet implemented');
     default:
       throw new Error(`Unknown parser type: ${type}`);
   }

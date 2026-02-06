@@ -29,7 +29,7 @@ export function detectLanguage(filePath: string): SupportedLanguage {
     '.php': 'php',
   };
 
-  return languageMap[ext] || 'typescript';
+  return languageMap[ext] as SupportedLanguage;
 }
 
 /**

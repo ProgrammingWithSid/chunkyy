@@ -2,7 +2,7 @@
  * Core type definitions for Chunkyyy
  */
 
-export type ParserType = 'typescript' | 'swc' | 'babel' | 'esprima' | 'treesitter';
+export type ParserType = 'typescript' | 'treesitter';
 export type SupportedLanguage =
   | 'typescript'
   | 'javascript'

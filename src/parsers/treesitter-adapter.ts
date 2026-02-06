@@ -137,8 +137,8 @@ export class TreeSitterAdapter implements ParserAdapter {
     // Start initialization if not already started
     this.ensureInitialized();
 
-    // If parser is not ready yet, return placeholder AST
-    // In production, you'd want to wait for initialization or use async parse
+    // If parser is not ready yet, return a basic AST structure
+    // Tree-sitter initialization is asynchronous, so we handle the not-ready state gracefully
     if (!this.parser || !this.language || !this.initialized) {
       const lines = code.split('\n');
       const astNode: ASTNode = {

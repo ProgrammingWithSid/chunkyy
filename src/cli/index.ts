@@ -10,7 +10,7 @@ interface CLIArgs {
   input?: string;
   output?: string;
   outputDir?: string;
-  parser?: 'typescript' | 'swc' | 'babel' | 'esprima';
+  parser?: 'typescript' | 'treesitter';
   chunkSize?: number;
   port?: number;
 }
@@ -44,7 +44,7 @@ function parseArgs(): CLIArgs {
         break;
       case '--parser':
       case '-p':
-        parsed.parser = next as 'typescript' | 'swc' | 'babel' | 'esprima';
+        parsed.parser = next as 'typescript' | 'treesitter';
         i++;
         break;
       case '--chunk-size':
@@ -160,7 +160,25 @@ async function watchCommand(args: CLIArgs) {
     console.log(`✓ Initial chunking: ${result.stats.totalChunks} chunks`);
   }
 
-  // Watch for changes (simplified - would use chokidar in production)
+  // Watch for changes
+  const chokidar = await import('chokidar');
+  const watcher = chokidar.default.watch(inputPath, {
+    ignored: /(^|[\/\\])\../, // ignore dotfiles
+    persistent: true,
+  });
+
+  watcher.on('change', async (filePath) => {
+    console.log(`File changed: ${filePath}`);
+    try {
+      // Convert absolute path to relative path for chunkFile
+      const relativePath = path.relative(process.cwd(), filePath);
+      const chunks = await chunkyyy.chunkFile(relativePath);
+      console.log(`✓ Re-chunked: ${chunks.length} chunks`);
+    } catch (error) {
+      console.error(`Error chunking ${filePath}:`, error);
+    }
+  });
+
   console.log('Press Ctrl+C to stop watching');
 }
 

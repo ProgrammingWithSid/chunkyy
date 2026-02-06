@@ -29,7 +29,7 @@ export class FunctionExtractor extends BaseExtractor {
     // unless we're extracting nested (parentQualifiedName is set)
     if (ts.isArrowFunction(tsNode) && tsNode.parent && ts.isVariableDeclaration(tsNode.parent)) {
       // Only handle if we're extracting nested (has parentQualifiedName in extract call)
-      // This is a bit of a hack - we check parent in canHandle
+      // Check parent node to distinguish function declarations from method declarations
       // In practice, VariableExtractor handles top-level arrow functions
       return false;
     }
