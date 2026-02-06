@@ -288,9 +288,11 @@ export class VueAdapter implements ParserAdapter {
   /**
    * Extract code from Vue SFC, adjusting for script section position
    */
-  extractCode(node: ASTNode, sourceCode?: string): string {
-    // Use the script content for extraction
-    const code = sourceCode || this.scriptContent;
+  extractCode(node: ASTNode): string {
+    // Always use the script content for extraction, not the entire Vue file
+    // The sourceCode parameter contains the entire Vue file (template + script + style)
+    // but we need to extract from just the script section
+    const code = this.scriptContent || '';
     return this.tsAdapter.extractCode(node, code);
   }
 }

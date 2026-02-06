@@ -605,7 +605,7 @@ export class Chunker {
         }
 
         // Step 3: Build dependency graph for all chunks
-        const dependencyGraph = this.buildDependencyGraph(allFileChunks);
+        let dependencyGraph = this.buildDependencyGraph(allFileChunks);
 
         // Step 4: Resolve all dependencies recursively
         const dependentChunkIds = new Set<string>();
@@ -625,49 +625,99 @@ export class Chunker {
             resolveDependencies(chunk.id, new Set());
         }
 
-        // Step 5: For same-file dependencies, include all chunks from files with selected chunks
-        // This handles cases where functions call other functions in the same file
-        const sameFileChunkIds = new Set<string>();
-        for (const selectedChunk of selectedChunks) {
-            const fileChunks = fileChunkMap.get(selectedChunk.filePath) || [];
-            for (const chunk of fileChunks) {
-                if (!selectedChunkIds.has(chunk.id) && !dependentChunkIds.has(chunk.id)) {
-                    sameFileChunkIds.add(chunk.id);
-                }
-            }
-        }
-
-        // Step 6: Get all dependent chunks
+        // Step 5: Get all dependent chunks
         const dependentChunks: Chunk[] = [];
         const allChunkMap = new Map<string, Chunk>();
         for (const chunk of allFileChunks) {
             allChunkMap.set(chunk.id, chunk);
         }
 
-        // Also include chunks from other files that are dependencies
-        // We need to chunk all files that might contain dependencies
-        const dependencyFiles = new Set<string>();
-        for (const chunk of selectedChunks) {
-            for (const dep of chunk.dependencies) {
-                if (dep.source && dep.source.startsWith('.')) {
-                    // Relative import - resolve file path
-                    const resolvedPath = this.resolveRelativePath(dep.source, chunk.filePath);
-                    dependencyFiles.add(resolvedPath);
+        // Step 5b: For same-file dependencies, include only chunks that are actual dependencies
+        // This handles cases where functions call other functions in the same file
+        const sameFileChunkIds = new Set<string>();
+        for (const selectedChunk of selectedChunks) {
+            // Only include chunks that are in the dependency graph for this selected chunk
+            const dependencies = dependencyGraph[selectedChunk.id] || [];
+            for (const depId of dependencies) {
+                const depChunk = allChunkMap.get(depId);
+                // Only include if it's from the same file and not already selected/dependent
+                if (depChunk && 
+                    depChunk.filePath === selectedChunk.filePath && 
+                    !selectedChunkIds.has(depId) && 
+                    !dependentChunkIds.has(depId)) {
+                    sameFileChunkIds.add(depId);
                 }
             }
         }
 
+        // Also include chunks from other files that are dependencies
+        // We need to chunk all files that might contain dependencies
+        const dependencyFiles = new Set<string>();
+        const processedChunks = new Set<string>();
+        
+        // Recursively collect dependency files from selected chunks and their dependencies
+        const collectDependencyFiles = (chunkIds: Set<string>) => {
+            for (const chunkId of chunkIds) {
+                if (processedChunks.has(chunkId)) continue;
+                processedChunks.add(chunkId);
+                
+                const chunk = allChunkMap.get(chunkId);
+                if (!chunk) continue;
+                
+                for (const dep of chunk.dependencies) {
+                    if (dep.source && dep.source.startsWith('.')) {
+                        // Relative import - resolve file path
+                        const resolvedPath = this.resolveRelativePath(dep.source, chunk.filePath);
+                        if (resolvedPath && !dependencyFiles.has(resolvedPath)) {
+                            dependencyFiles.add(resolvedPath);
+                        }
+                    }
+                }
+                
+                // Recursively process dependencies
+                const depIds = dependencyGraph[chunkId] || [];
+                if (depIds.length > 0) {
+                    collectDependencyFiles(new Set(depIds));
+                }
+            }
+        };
+        
+        // Start with selected chunks
+        collectDependencyFiles(new Set(selectedChunks.map(c => c.id)));
+
         // Chunk dependency files
         for (const depFile of dependencyFiles) {
             try {
+                // Check if file exists
+                const fullPath = path.resolve(this.options.rootDir, depFile);
+                if (!fs.existsSync(fullPath)) {
+                    continue;
+                }
+                
                 const depChunks = await this.chunkFile(depFile);
+                allFileChunks.push(...depChunks);
+                
                 for (const chunk of depChunks) {
                     allChunkMap.set(chunk.id, chunk);
-                    if (dependentChunkIds.has(chunk.id)) {
-                        dependentChunks.push(chunk);
+                    
+                    // Check if this chunk matches any dependency name from selected chunks
+                    for (const selectedChunk of selectedChunks) {
+                        for (const dep of selectedChunk.dependencies) {
+                            if (dep.source && dep.source.startsWith('.')) {
+                                const resolvedPath = this.resolveRelativePath(dep.source, selectedChunk.filePath);
+                                if (resolvedPath === depFile && (chunk.name === dep.name || chunk.exportName === dep.name)) {
+                                    if (!dependentChunkIds.has(chunk.id)) {
+                                        dependentChunkIds.add(chunk.id);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            } catch {
+                
+                // Rebuild dependency graph with new chunks
+                dependencyGraph = this.buildDependencyGraph(allFileChunks);
+            } catch (error) {
                 // File might not exist or can't be accessed
                 continue;
             }
@@ -722,13 +772,19 @@ export class Chunker {
             let lastEndLine = 0;
 
             for (const chunk of sortedChunks) {
-                // Add any code between chunks (imports, etc.)
+                // Add any code between chunks (imports, etc.) - but only if gap is small
+                // Don't include huge gaps (like template sections in Vue files)
                 if (chunk.startLine > lastEndLine + 1) {
-                    const gapStart = Math.max(0, lastEndLine);
-                    const gapEnd = chunk.startLine - 1;
-                    const gapCode = lines.slice(gapStart, gapEnd).join('\n');
-                    if (gapCode.trim()) {
-                        codeParts.push(gapCode);
+                    const gapSize = chunk.startLine - lastEndLine - 1;
+                    // Only include gaps that are small (likely imports/comments between chunks)
+                    // Large gaps (like 100+ lines) are probably template sections or unrelated code
+                    if (gapSize > 0 && gapSize <= 20) {
+                        const gapStart = Math.max(0, lastEndLine);
+                        const gapEnd = chunk.startLine - 1;
+                        const gapCode = lines.slice(gapStart, gapEnd).join('\n');
+                        if (gapCode.trim()) {
+                            codeParts.push(gapCode);
+                        }
                     }
                 }
 
