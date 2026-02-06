@@ -163,7 +163,7 @@ async function watchCommand(args: CLIArgs) {
   // Watch for changes
   const chokidar = await import('chokidar');
   const watcher = chokidar.default.watch(inputPath, {
-    ignored: /(^|[\/\\])\../, // ignore dotfiles
+    ignored: /(^|\/)\../, // ignore dotfiles
     persistent: true,
   });
 
